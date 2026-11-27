@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FoundationsPlayground } from '../components/FoundationsPlayground';
 import { BEGINNER_GLOSSARY } from '../data';
 
@@ -8,86 +9,176 @@ interface FoundationsPageProps {
   onMarkComplete: () => void;
 }
 
+const FOUNDATION_STEPS = [
+  { id: 'blocks', label: '1. Building Blocks' },
+  { id: 'lab', label: '2. Traffic Spike Lab' },
+  { id: 'glossary', label: '3. Quick Glossary' },
+] as const;
+
+type FoundationStepId = (typeof FOUNDATION_STEPS)[number]['id'];
+
 export function FoundationsPage({ isCompleted, onMarkComplete }: FoundationsPageProps) {
+  const [viewMode, setViewMode] = useState<'guided' | 'all'>('guided');
+  const [stepIdx, setStepIdx] = useState(0);
+
+  const activeStep: FoundationStepId = FOUNDATION_STEPS[stepIdx].id;
+  const isVisible = (id: FoundationStepId) => viewMode === 'all' || activeStep === id;
+
+  const goToStep = (next: number) => {
+    setStepIdx(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-            <BookOpen className="h-3.5 w-3.5" />
-            Module 0 · Beginner On-Ramp
-          </span>
-          {isCompleted && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Completed
-            </span>
-          )}
-        </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Backend Architecture Foundations
-        </h1>
-        <p className="max-w-3xl text-base leading-relaxed text-slate-600 dark:text-slate-300">
-          Every backend architecture combines the same core building blocks in different ways. Click
-          through the 8 essentials below so terms like <em>API Gateway</em>, <em>Caching</em>,{' '}
-          <em>Rate Limiting</em>, and <em>Backpressure</em> feel completely intuitive before we
-          compare the 4 patterns.
-        </p>
-      </header>
-
-      <FoundationsPlayground />
-
-      {/* Beginner Glossary */}
-      <section className="space-y-4">
+      <header className="space-y-5">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            10 Architecture Terms You’ll Hear Everywhere
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            A quick pocket glossary — no textbook jargon.
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            <span>Module 0 · Beginner On-Ramp</span>
+            {isCompleted && (
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                · <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+              </span>
+            )}
+          </div>
+          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Backend Architecture Foundations
+          </h1>
+          <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
+            Every backend combines the same core building blocks. Take them one calm step at a time
+            before comparing the 4 architectures.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {BEGINNER_GLOSSARY.map((item) => (
-            <div
-              key={item.term}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
-            >
-              <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                {item.term}
-              </h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                {item.meaning}
-              </p>
+
+        {/* Single Quiet Underline Tab Bar + Subtle View Mode Link */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 dark:border-slate-700/80">
+          {viewMode === 'guided' ? (
+            <div className="-mb-px flex flex-wrap gap-6" role="tablist">
+              {FOUNDATION_STEPS.map((step, i) => {
+                const isActive = i === stepIdx;
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setStepIdx(i)}
+                    className={`border-b-2 pb-3 text-sm font-semibold transition ${
+                      isActive
+                        ? 'border-indigo-500 text-slate-900 dark:text-white'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {step.label}
+                  </button>
+                );
+              })}
             </div>
-          ))}
+          ) : (
+            <span className="pb-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+              Showing all 3 sections on one page
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setViewMode((m) => (m === 'guided' ? 'all' : 'guided'))}
+            className="pb-3 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
+          >
+            {viewMode === 'guided' ? 'All Sections' : 'Back to Guided Steps'}
+          </button>
         </div>
-      </section>
+      </header>
 
-      {/* Completion & Next Step */}
-      <footer className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-        <button
-          type="button"
-          onClick={onMarkComplete}
-          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-            isCompleted
-              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-              : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700'
-          }`}
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          {isCompleted ? 'Foundations Marked Complete' : 'Mark Foundations Complete'}
-        </button>
+      {/* Step 1 & Step 2 */}
+      {viewMode === 'all' ? (
+        <FoundationsPlayground section="both" />
+      ) : (
+        <>
+          {isVisible('blocks') && (
+            <FoundationsPlayground section="blocks" onFinishBlocks={() => goToStep(1)} />
+          )}
+          {isVisible('lab') && <FoundationsPlayground section="lab" />}
+        </>
+      )}
 
-        <Link
-          to="/modules/modular-monolith"
-          onClick={onMarkComplete}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-500"
-        >
-          Next: 1. Modular Monolith
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </footer>
+      {/* Step 3: Beginner Glossary */}
+      {isVisible('glossary') && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+              10 Architecture Terms You’ll Hear Everywhere
+            </h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              A quick pocket glossary — plain English, no textbook jargon.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {BEGINNER_GLOSSARY.map((item) => (
+              <div
+                key={item.term}
+                className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]"
+              >
+                <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-300">
+                  {item.term}
+                </h3>
+                <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {item.meaning}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Quiet Step Footer (Only shown when needed — Step 1 already has Next Block inside card) */}
+      {viewMode === 'guided' && stepIdx === 1 && (
+        <footer className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => goToStep(0)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Building Blocks
+          </button>
+
+          <button
+            type="button"
+            onClick={() => goToStep(2)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+          >
+            Continue: 3. Quick Glossary
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </footer>
+      )}
+
+      {(viewMode === 'all' || stepIdx === 2) && (
+        <footer className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
+          <button
+            type="button"
+            onClick={onMarkComplete}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+              isCompleted
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700'
+            }`}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isCompleted ? 'Foundations Marked Complete' : 'Mark Foundations Complete'}
+          </button>
+
+          <Link
+            to="/modules/modular-monolith"
+            onClick={onMarkComplete}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+          >
+            Next: 1. Modular Monolith
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </footer>
+      )}
     </div>
   );
 }

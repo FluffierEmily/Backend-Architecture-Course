@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import {
   AlertTriangle,
-  Award,
+  Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Clock,
   Cpu,
@@ -22,31 +24,27 @@ interface DecisionSimulatorProps {
 
 const VERDICT_STYLES: Record<
   SimulatorOutcome['verdict'],
-  { label: string; badge: string; border: string; bg: string }
+  { label: string; badge: string; accent: string }
 > = {
   'best-fit': {
     label: 'Best Fit',
-    badge: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40',
-    border: 'border-emerald-500/40',
-    bg: 'bg-emerald-500/10',
+    badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    accent: 'border-l-emerald-500',
   },
   viable: {
     label: 'Viable with Trade-offs',
-    badge: 'bg-sky-500/20 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40',
-    border: 'border-sky-500/40',
-    bg: 'bg-sky-500/10',
+    badge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+    accent: 'border-l-sky-500',
   },
   'over-engineered': {
     label: 'Over-Engineered',
-    badge: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40',
-    border: 'border-amber-500/40',
-    bg: 'bg-amber-500/10',
+    badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    accent: 'border-l-amber-500',
   },
   risky: {
     label: 'Risky Bottleneck',
-    badge: 'bg-rose-500/20 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40',
-    border: 'border-rose-500/40',
-    bg: 'bg-rose-500/10',
+    badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+    accent: 'border-l-rose-500',
   },
 };
 
@@ -63,6 +61,7 @@ export function DecisionSimulator({
   onRecordChoice,
 }: DecisionSimulatorProps) {
   const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [jumpOpen, setJumpOpen] = useState(false);
   const scenario = SIMULATOR_SCENARIOS[scenarioIdx];
 
   const [selectedArch, setSelectedArch] = useState<ArchitectureId | null>(
@@ -80,6 +79,7 @@ export function DecisionSimulator({
     setSelectedArch(saved);
     setSimulatedArch(saved);
     setShowCompareAll(false);
+    setJumpOpen(false);
   };
 
   const handleRunSimulation = () => {
@@ -94,70 +94,118 @@ export function DecisionSimulator({
 
   return (
     <div className="space-y-6">
-      {/* Scenario Selector Strip */}
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        {SIMULATOR_SCENARIOS.map((s, idx) => {
-          const savedChoice = completedChoices[s.id];
-          const hitBestFit = savedChoice === s.bestFit;
-          const isActive = idx === scenarioIdx;
-
-          return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => handleSelectScenario(idx)}
-              className={`flex flex-col items-start rounded-xl border p-3 text-left transition ${
-                isActive
-                  ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/40'
-                  : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-slate-700'
-              }`}
-            >
-              <div className="flex w-full items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Case #{idx + 1} · {s.company}
+      {/* Unified Calm Case Card (Matches FoundationsPlayground layout) */}
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+        {/* Slim Progress Track + Jump Dropdown inside the card */}
+        <div className="mb-6 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setJumpOpen((o) => !o)}
+                aria-expanded={jumpOpen}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <span>
+                  Case {scenarioIdx + 1} of {SIMULATOR_SCENARIOS.length} · {scenario.company}
                 </span>
-                {savedChoice && (
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      hitBestFit
-                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300'
-                        : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'
-                    }`}
-                  >
-                    {hitBestFit ? 'Optimal' : 'Tried'}
-                  </span>
-                )}
-              </div>
-              <span className="mt-1 line-clamp-2 text-xs font-semibold text-slate-900 dark:text-slate-100">
-                {s.title}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </button>
 
-      {/* Main Brief & Constraints */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Client Brief · {scenario.company}
-            </span>
-            <h2 className="mt-0.5 text-xl font-extrabold text-slate-900 dark:text-white">
-              {scenario.title}
-            </h2>
+              {jumpOpen && (
+                <div className="absolute left-0 z-20 mt-1.5 w-80 rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
+                  {SIMULATOR_SCENARIOS.map((s, idx) => {
+                    const savedChoice = completedChoices[s.id];
+                    const hitBestFit = savedChoice === s.bestFit;
+                    const isCurrent = idx === scenarioIdx;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handleSelectScenario(idx)}
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition ${
+                          isCurrent
+                            ? 'bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
+                            : 'text-slate-700 hover:bg-stone-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="truncate">
+                          {idx + 1}. {s.company} — {s.title}
+                        </span>
+                        {savedChoice && (
+                          <Check
+                            className={`h-3.5 w-3.5 shrink-0 ${
+                              hitBestFit ? 'text-emerald-500' : 'text-amber-400'
+                            }`}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={scenarioIdx === 0}
+                onClick={() => handleSelectScenario(scenarioIdx - 1)}
+                aria-label="Previous case"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={scenarioIdx === SIMULATOR_SCENARIOS.length - 1}
+                onClick={() => handleSelectScenario(scenarioIdx + 1)}
+                aria-label="Next case"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            Scenario {scenarioIdx + 1} of {SIMULATOR_SCENARIOS.length}
-          </span>
+
+          {/* Quiet 8-Segment Progress Track */}
+          <div className="grid grid-cols-8 gap-1.5" aria-hidden="true">
+            {SIMULATOR_SCENARIOS.map((s, idx) => {
+              const saved = completedChoices[s.id];
+              const isCurrent = idx === scenarioIdx;
+              const isBest = saved === s.bestFit;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  tabIndex={-1}
+                  title={`Case ${idx + 1}: ${s.company}`}
+                  onClick={() => handleSelectScenario(idx)}
+                  className={`h-1.5 rounded-full transition-colors ${
+                    isCurrent
+                      ? 'bg-indigo-500'
+                      : isBest
+                      ? 'bg-emerald-500/70'
+                      : saved
+                      ? 'bg-amber-400/70'
+                      : 'bg-stone-200 hover:bg-stone-300 dark:bg-slate-700/80 dark:hover:bg-slate-600'
+                  }`}
+                />
+              );
+            })}
+          </div>
         </div>
 
-        <p className="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+        {/* Brief Heading & Story */}
+        <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+          {scenario.title}
+        </h2>
+        <p className="prose-measure mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
           {scenario.brief}
         </p>
 
         {/* Constraints Grid */}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[
             { icon: Users, label: 'Team Size', value: scenario.constraints.teamSize },
             { icon: Gauge, label: 'Traffic Profile', value: scenario.constraints.trafficPattern },
@@ -171,13 +219,13 @@ export function DecisionSimulator({
           ].map(({ icon: Icon, label, value }) => (
             <div
               key={label}
-              className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"
+              className="rounded-xl border border-stone-200 bg-stone-50 p-3.5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
             >
               <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <Icon className="h-3.5 w-3.5 text-indigo-500" />
                 {label}
               </div>
-              <p className="mt-1 text-xs font-medium leading-snug text-slate-800 dark:text-slate-200">
+              <p className="mt-1 text-sm font-medium leading-snug text-slate-800 dark:text-slate-200">
                 {value}
               </p>
             </div>
@@ -185,11 +233,11 @@ export function DecisionSimulator({
         </div>
 
         {/* Architecture Picker */}
-        <div className="mt-6">
-          <p className="mb-3 text-sm font-bold text-slate-900 dark:text-white">
-            Which backend architecture do you recommend for {scenario.company}?
+        <div className="mt-7 border-t border-stone-200 pt-6 dark:border-slate-700/80">
+          <p className="mb-3.5 text-sm font-bold text-slate-900 dark:text-white">
+            Which architecture do you recommend for {scenario.company}?
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             {ARCHITECTURE_MODULES.map((arch) => {
               const isPicked = selectedArch === arch.id;
               return (
@@ -199,14 +247,14 @@ export function DecisionSimulator({
                   onClick={() => setSelectedArch(arch.id)}
                   className={`flex flex-col rounded-xl border p-4 text-left transition ${
                     isPicked
-                      ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/40'
-                      : 'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-slate-700'
+                      ? 'border-indigo-500 bg-indigo-500/[0.08] ring-1 ring-indigo-500/40'
+                      : 'border-stone-200 bg-stone-50 hover:border-stone-300 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:hover:border-slate-600'
                   }`}
                 >
                   <span className="text-sm font-bold text-slate-900 dark:text-white">
                     {arch.shortName}
                   </span>
-                  <span className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                  <span className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
                     {arch.tagline}
                   </span>
                 </button>
@@ -214,69 +262,63 @@ export function DecisionSimulator({
             })}
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               disabled={!selectedArch}
               onClick={handleRunSimulation}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Play className="h-4 w-4" />
               Run Architecture Simulation
             </button>
+
             {simulatedArch && scenarioIdx < SIMULATOR_SCENARIOS.length - 1 && (
               <button
                 type="button"
                 onClick={() => handleSelectScenario(scenarioIdx + 1)}
-                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                Next Scenario →
+                Next Scenario
+                <ChevronRight className="h-4 w-4" />
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Simulation Outcome Report */}
+      {/* Calm Simulation Outcome Card (Clean left accent instead of loud full-card tint) */}
       {outcome && simulatedArch && (
         <div
-          className={`rounded-2xl border p-6 shadow-sm ${VERDICT_STYLES[outcome.verdict].border} ${VERDICT_STYLES[outcome.verdict].bg}`}
+          className={`rounded-2xl border border-l-4 border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033] ${VERDICT_STYLES[outcome.verdict].accent}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <Award className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-              <span className="text-sm font-bold text-slate-900 dark:text-white">
-                Simulation Result for {ARCHITECTURE_BY_ID[simulatedArch].name}
-              </span>
-            </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              6-Month Outcome · {ARCHITECTURE_BY_ID[simulatedArch].name}
+            </span>
             <span
-              className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${VERDICT_STYLES[outcome.verdict].badge}`}
+              className={`rounded-full px-3 py-1 text-xs font-bold ${VERDICT_STYLES[outcome.verdict].badge}`}
             >
               {VERDICT_STYLES[outcome.verdict].label}
             </span>
           </div>
 
-          <h3 className="mt-3 text-lg font-extrabold text-slate-900 dark:text-white">
+          <h3 className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">
             {outcome.headline}
           </h3>
 
-          <div className="mt-4 rounded-xl border border-slate-200/80 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-950/75">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              6 Months Later...
-            </p>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-              {outcome.sixMonthsLater}
-            </p>
-          </div>
+          <p className="prose-measure mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
+            {outcome.sixMonthsLater}
+          </p>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            {/* What Worked & What Hurt */}
-            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-950/75">
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            {/* What Worked & Pain Points */}
+            <div className="space-y-4 rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
               <div>
-                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" /> What Worked
                 </p>
-                <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
+                <ul className="space-y-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
                   {outcome.whatWorked.map((item) => (
                     <li key={item} className="flex gap-2">
                       <span className="text-emerald-500">•</span>
@@ -285,11 +327,11 @@ export function DecisionSimulator({
                   ))}
                 </ul>
               </div>
-              <div className="border-t border-slate-200 pt-3 dark:border-slate-800">
-                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  <AlertTriangle className="h-4 w-4" /> Trade-offs & Pain Points
+              <div className="border-t border-stone-200 pt-4 dark:border-slate-700/80">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4" /> Trade-offs &amp; Pain Points
                 </p>
-                <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
+                <ul className="space-y-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
                   {outcome.whatHurt.map((item) => (
                     <li key={item} className="flex gap-2">
                       <span className="text-amber-500">•</span>
@@ -300,32 +342,32 @@ export function DecisionSimulator({
               </div>
             </div>
 
-            {/* 5-Axis Score Bars */}
-            <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-950/75">
-              <div className="mb-3 flex items-center justify-between">
+            {/* 5-Axis Trade-Off Scorecard */}
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+              <div className="mb-4 flex items-center justify-between gap-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Trade-Off Scorecard (1–5)
                 </p>
                 {simulatedArch !== scenario.bestFit && (
                   <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                    Marker = Best Fit ({bestFitModule.shortName})
+                    Marker = {bestFitModule.shortName}
                   </span>
                 )}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {SCORE_AXES.map(({ key, label }) => {
                   const score = outcome.scores[key];
                   const bestScore = bestFitOutcome.scores[key];
                   return (
                     <div key={key}>
-                      <div className="mb-1 flex justify-between text-xs font-medium">
+                      <div className="mb-1.5 flex justify-between text-xs font-medium">
                         <span className="text-slate-700 dark:text-slate-300">{label}</span>
                         <span className="font-mono font-bold text-slate-900 dark:text-white">
                           {score}/5
                         </span>
                       </div>
-                      <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                      <div className="relative h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800">
                         <div
                           className="h-full rounded-full bg-indigo-500 transition-all duration-500"
                           style={{ width: `${(score / 5) * 100}%` }}
@@ -344,7 +386,7 @@ export function DecisionSimulator({
               </div>
 
               {simulatedArch !== scenario.bestFit && (
-                <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-900 dark:text-emerald-200">
+                <p className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-3.5 text-xs leading-5 text-emerald-900 dark:text-emerald-200">
                   <strong>Recommended Best Fit:</strong> {bestFitModule.name} —{' '}
                   {bestFitOutcome.headline}
                 </p>
@@ -352,40 +394,44 @@ export function DecisionSimulator({
             </div>
           </div>
 
-          {/* Compare All 4 Options Toggle */}
-          <div className="mt-4">
+          {/* Compare All 4 Options Disclosure */}
+          <div className="mt-6 border-t border-stone-200 pt-5 dark:border-slate-700/80">
             <button
               type="button"
               onClick={() => setShowCompareAll((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-300"
             >
               {showCompareAll ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-              {showCompareAll ? 'Hide All 4 Comparisons' : 'Compare All 4 Architectures on This Brief'}
+              {showCompareAll
+                ? 'Hide All 4 Comparisons'
+                : 'Compare All 4 Architectures on This Brief'}
             </button>
 
             {showCompareAll && (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {ARCHITECTURE_MODULES.map((arch) => {
                   const o = scenario.outcomes[arch.id];
                   const style = VERDICT_STYLES[o.verdict];
                   return (
                     <div
                       key={arch.id}
-                      className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-950/80"
+                      className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">
                           {arch.shortName}
                         </span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.badge}`}>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.badge}`}
+                        >
                           {style.label}
                         </span>
                       </div>
-                      <p className="mt-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+                      <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
                         {o.headline}
                       </p>
                     </div>

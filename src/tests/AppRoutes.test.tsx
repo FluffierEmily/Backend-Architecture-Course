@@ -28,19 +28,21 @@ describe('AppRoutes integration', () => {
     expect(document.title).toBe('Interactive Backend Architectures Course');
   });
 
-  it('renders Foundations page and toggles the Traffic Spike mini-lab', () => {
+  it('renders Foundations page with guided steps and toggles the Traffic Spike mini-lab', () => {
     renderAt('/foundations');
     expect(document.title).toBe('Foundations · Interactive Backend Architectures Course');
     expect(
       screen.getByRole('heading', { name: /backend architecture foundations/i })
     ).toBeInTheDocument();
 
+    // Navigate to Step 2 (Traffic Spike Lab)
+    fireEvent.click(screen.getByRole('tab', { name: /2\. traffic spike lab/i }));
     fireEvent.click(screen.getByRole('button', { name: /trigger 10x flash spike/i }));
     expect(screen.getByText(/OVERLOADED \(503 Errors!\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Absorbing Spike Smoothly/i)).toBeInTheDocument();
   });
 
-  it('renders all 4 architecture module pages with diagrams, code comparisons, and projects', () => {
+  it('renders all 4 architecture module pages with guided steps and All Sections mode', () => {
     const slugs = [
       { slug: 'modular-monolith', heading: 'Modular Monolith' },
       { slug: 'microservices', heading: 'Microservices' },
@@ -51,10 +53,32 @@ describe('AppRoutes integration', () => {
     for (const { slug, heading } of slugs) {
       const { unmount } = renderAt(`/modules/${slug}`);
       expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
+      // Guided Steps starts cleanly on Step 1 (Story)
+      expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+
+      // Switching to All Sections reveals diagram and code comparisons together
+      fireEvent.click(screen.getByRole('button', { name: /all sections/i }));
       expect(screen.getByText(/Problematic vs\. Refactored Examples/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /simulate failure \/ spike/i })).toBeInTheDocument();
       unmount();
     }
+  });
+
+  it('opens the auto-hiding sidebar via the left edge trigger and toggles Calm Motion', () => {
+    renderAt('/');
+    const edgeTrigger = screen.getByRole('button', { name: /open navigation sidebar/i });
+    expect(edgeTrigger).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.mouseEnter(edgeTrigger);
+    expect(edgeTrigger).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: /calm motion/i }));
+    expect(document.documentElement.classList.contains('calm-motion')).toBe(true);
+
+    expect(screen.queryByRole('button', { name: /focus mode/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close navigation menu/i }));
+    expect(edgeTrigger).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('renders Compare page and highlights matching architectures on priority selection', () => {
@@ -65,6 +89,8 @@ describe('AppRoutes integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /spiky traffic \/ zero idle cost/i }));
     expect(screen.getAllByText(/★ Strong Match/i).length).toBe(2);
+
+    fireEvent.click(screen.getByRole('tab', { name: /2\. hybrids & strangler fig/i }));
     expect(
       screen.getByRole('heading', { name: /the strangler fig pattern/i })
     ).toBeInTheDocument();

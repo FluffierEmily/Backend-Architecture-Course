@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
-import { AlertTriangle, CheckCircle2, Eye, Layers } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CodeAnnotation, CodeComparisonItem } from '../types/course';
 
 interface CodeComparisonProps {
@@ -29,12 +29,22 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
   const [showAllExplainers, setShowAllExplainers] = useState(false);
   const [mobileTab, setMobileTab] = useState<ViewTab>('split');
 
-  const activeAnnotation =
-    item.annotations.find((a) => a.id === selectedId) ?? item.annotations[0];
+  const activeIndex = Math.max(
+    0,
+    item.annotations.findIndex((a) => a.id === selectedId)
+  );
+  const activeAnnotation = item.annotations[activeIndex] ?? item.annotations[0];
 
   const handleSelect = (annotationId: string) => {
     setSelectedId(annotationId);
     onInspect?.(item.id);
+  };
+
+  const stepAnnotation = (delta: number) => {
+    const nextIdx =
+      (activeIndex + delta + item.annotations.length) % item.annotations.length;
+    setShowAllExplainers(false);
+    handleSelect(item.annotations[nextIdx].id);
   };
 
   const renderCodePane = (side: 'problem' | 'refactored') => {
@@ -45,18 +55,16 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
 
     return (
       <div
-        className={`flex flex-col overflow-hidden rounded-xl border ${
-          isProblem
-            ? 'border-rose-500/30 bg-slate-950'
-            : 'border-emerald-500/30 bg-slate-950'
+        className={`flex flex-col overflow-hidden rounded-2xl border bg-[#0b1120] ${
+          isProblem ? 'border-rose-500/25' : 'border-emerald-500/25'
         }`}
       >
-        {/* Pane Header */}
+        {/* Calm Pane Header */}
         <div
           className={`flex items-center justify-between gap-2 border-b px-4 py-3 ${
             isProblem
-              ? 'border-rose-500/20 bg-rose-950/35'
-              : 'border-emerald-500/20 bg-emerald-950/35'
+              ? 'border-rose-500/20 bg-rose-950/25'
+              : 'border-emerald-500/20 bg-emerald-950/25'
           }`}
         >
           <div className="min-w-0">
@@ -77,18 +85,16 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
             <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{file}</p>
           </div>
           <span
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-              isProblem
-                ? 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30'
-                : 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30'
+            className={`shrink-0 text-[11px] font-bold uppercase tracking-wider ${
+              isProblem ? 'text-rose-300' : 'text-emerald-300'
             }`}
           >
             {isProblem ? 'Problematic' : 'Refactored'}
           </span>
         </div>
 
-        {/* Highlighted Code */}
-        <div className="overflow-x-auto py-3 text-[13px] leading-relaxed">
+        {/* Highlighted Code with Comfortable Line Spacing */}
+        <div className="overflow-x-auto py-4 text-[13.5px] leading-7">
           <Highlight theme={themes.nightOwl} code={code.trimEnd()} language="typescript">
             {({ tokens, getLineProps, getTokenProps }) => (
               <pre className="m-0 bg-transparent font-mono">
@@ -113,8 +119,8 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                       : 'border-l-4 border-emerald-400 bg-emerald-500/15';
                   } else if (isOtherAnnotated) {
                     highlightClasses = isProblem
-                      ? 'border-l-2 border-rose-500/40 bg-rose-500/[0.05] hover:bg-rose-500/10 cursor-pointer'
-                      : 'border-l-2 border-emerald-500/40 bg-emerald-500/[0.05] hover:bg-emerald-500/10 cursor-pointer';
+                      ? 'border-l-2 border-rose-500/35 bg-rose-500/[0.04] hover:bg-rose-500/10 cursor-pointer'
+                      : 'border-l-2 border-emerald-500/35 bg-emerald-500/[0.04] hover:bg-emerald-500/10 cursor-pointer';
                   }
 
                   return (
@@ -133,11 +139,9 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                         }
                       }}
                       title={
-                        matchedAnnotation
-                          ? `Inspect: ${matchedAnnotation.label}`
-                          : undefined
+                        matchedAnnotation ? `Inspect: ${matchedAnnotation.label}` : undefined
                       }
-                      className={`flex px-3 transition-colors ${highlightClasses}`}
+                      className={`flex px-3.5 py-0.5 transition-colors ${highlightClasses}`}
                     >
                       <span className="mr-4 inline-block w-6 shrink-0 select-none text-right text-xs text-slate-500">
                         {lineNumber}
@@ -158,13 +162,13 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
         {/* Synced Single Explainer Footer */}
         {!showAllExplainers && activeAnnotation && (
           <div
-            className={`mt-auto border-t px-4 py-3.5 text-sm ${
+            className={`mt-auto border-t px-5 py-4 text-sm ${
               isProblem
                 ? 'border-rose-500/20 bg-rose-950/25 text-rose-100'
                 : 'border-emerald-500/20 bg-emerald-950/25 text-emerald-100'
             }`}
           >
-            <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
               <span
                 className={`text-xs font-bold uppercase tracking-wider ${
                   isProblem ? 'text-rose-300' : 'text-emerald-300'
@@ -174,13 +178,13 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                 {activeAnnotation.label}
               </span>
               <span className="font-mono text-[11px] text-slate-400">
-                Lines{' '}
+                L
                 {isProblem
                   ? `${activeAnnotation.problemLines[0]}–${activeAnnotation.problemLines[1]}`
                   : `${activeAnnotation.refactoredLines[0]}–${activeAnnotation.refactoredLines[1]}`}
               </span>
             </div>
-            <p className="leading-relaxed text-slate-200">
+            <p className="leading-7 text-slate-200">
               {isProblem
                 ? activeAnnotation.problemExplanation
                 : activeAnnotation.refactoredExplanation}
@@ -192,12 +196,14 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Header */}
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{item.title}</h3>
-          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">{item.subtitle}</p>
+          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">{item.title}</h3>
+          <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {item.subtitle}
+          </p>
         </div>
         <button
           type="button"
@@ -205,29 +211,27 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
             setShowAllExplainers((prev) => !prev);
             onInspect?.(item.id);
           }}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-            showAllExplainers
-              ? 'border-indigo-500 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
-              : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-          }`}
+          className="shrink-0 self-start text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
         >
-          <Eye className="h-3.5 w-3.5" />
           {showAllExplainers ? 'Focus One Highlight' : 'View All Explainers'}
         </button>
       </div>
 
       {/* Scenario Context */}
-      <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300">
+      <p className="prose-measure mb-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300">
         <span className="font-semibold text-slate-900 dark:text-white">Scenario: </span>
         {item.context}
       </p>
 
-      {/* Annotation Selector Pills + Mobile View Toggle */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Code highlights">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <Layers className="h-3.5 w-3.5" />
-            Inspect highlight:
+      {/* Quiet Highlight Selector Bar + Step Arrows + Mobile Toggle */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-slate-700/80">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="tablist"
+          aria-label="Code highlights"
+        >
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            Focus:
           </span>
           {item.annotations.map((ann) => {
             const isSelected = !showAllExplainers && ann.id === activeAnnotation?.id;
@@ -241,10 +245,10 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                   setShowAllExplainers(false);
                   handleSelect(ann.id);
                 }}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                   isSelected
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-stone-100 text-slate-600 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
                 {ann.label}
@@ -253,28 +257,51 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
           })}
         </div>
 
-        {/* Mobile pane switcher */}
-        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs lg:hidden dark:border-slate-700 dark:bg-slate-800">
-          {(['split', 'problem', 'refactored'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setMobileTab(tab)}
-              className={`rounded-md px-2.5 py-1 font-medium capitalize transition ${
-                mobileTab === tab
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-                  : 'text-slate-600 dark:text-slate-400'
-              }`}
-            >
-              {tab === 'problem' ? 'Problematic' : tab}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {item.annotations.length > 1 && !showAllExplainers && (
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="Previous highlight"
+                onClick={() => stepAnnotation(-1)}
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next highlight"
+                onClick={() => stepAnnotation(1)}
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Mobile pane switcher */}
+          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-0.5 text-xs lg:hidden dark:border-slate-700 dark:bg-[#0f172a]">
+            {(['split', 'problem', 'refactored'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setMobileTab(tab)}
+                className={`rounded-lg px-2.5 py-1 font-medium capitalize transition ${
+                  mobileTab === tab
+                    ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-800 dark:text-white'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                {tab === 'problem' ? 'Problematic' : tab}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Code Panes */}
       <div
-        className={`grid gap-4 ${
+        className={`grid gap-5 ${
           mobileTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
         }`}
       >
@@ -284,31 +311,31 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
 
       {/* All Explainers Expanded Comparison */}
       {showAllExplainers && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-3.5">
           {item.annotations.map((ann) => (
             <div
               key={ann.id}
-              className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 lg:grid-cols-2 dark:border-slate-800 dark:bg-slate-950/60"
+              className="grid gap-3.5 rounded-2xl border border-stone-200 bg-stone-50 p-4 lg:grid-cols-2 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
             >
-              <div className="rounded-lg border border-rose-500/25 bg-rose-500/10 p-3">
-                <div className="mb-1 flex items-center justify-between text-xs font-bold text-rose-700 dark:text-rose-300">
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.08] p-4">
+                <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-rose-700 dark:text-rose-300">
                   <span>Problematic · {ann.label}</span>
                   <span className="font-mono">
                     L{ann.problemLines[0]}–{ann.problemLines[1]}
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+                <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
                   {ann.problemExplanation}
                 </p>
               </div>
-              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3">
-                <div className="mb-1 flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300">
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] p-4">
+                <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300">
                   <span>Refactored · {ann.label}</span>
                   <span className="font-mono">
                     L{ann.refactoredLines[0]}–{ann.refactoredLines[1]}
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+                <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
                   {ann.refactoredExplanation}
                 </p>
               </div>

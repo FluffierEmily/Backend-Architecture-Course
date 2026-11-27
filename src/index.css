@@ -10,11 +10,27 @@
 
   body {
     font-family: var(--font-sans);
+    line-height: 1.65;
+    letter-spacing: -0.005em;
   }
 
   code, pre {
     font-family: var(--font-mono);
   }
+
+  /* Clear, forgiving keyboard focus rings */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  [role="tab"]:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+}
+
+/* Comfortable reading line length for prose blocks */
+.prose-measure {
+  max-width: 66ch;
 }
 
 @keyframes flow-dash {
@@ -24,13 +40,32 @@
 }
 
 .animate-flow {
-  animation: flow-dash 1.2s linear infinite;
+  animation: flow-dash 1.4s linear infinite;
 }
 
 .animate-flow-slow {
-  animation: flow-dash 2.2s linear infinite;
+  animation: flow-dash 2.4s linear infinite;
 }
 
 .animate-flow-fast {
-  animation: flow-dash 0.65s linear infinite;
+  animation: flow-dash 0.8s linear infinite;
+}
+
+/* Calm Motion mode + OS reduced-motion support */
+.calm-motion .animate-flow,
+.calm-motion .animate-flow-slow,
+.calm-motion .animate-flow-fast {
+  animation: none !important;
+}
+
+.calm-motion * {
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-flow,
+  .animate-flow-slow,
+  .animate-flow-fast {
+    animation: none !important;
+  }
 }

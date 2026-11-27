@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, AlertOctagon, Info } from 'lucide-react';
+import { Activity, AlertOctagon } from 'lucide-react';
 import type { ArchitectureDiagramData, DiagramNode } from '../types/course';
 
 interface ArchitectureDiagramProps {
@@ -24,7 +24,7 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
   const selectedNode = nodeMap.get(selectedNodeId) ?? data.nodes[0];
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Top Controls */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -32,17 +32,17 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
             Interactive Architecture Flow
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Click any component to inspect its role, or simulate a failure / traffic spike.
+            Click any box to inspect its role, or toggle a failure / traffic spike.
           </p>
         </div>
 
-        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-950">
+        <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-[#0f172a]">
           <button
             type="button"
             onClick={() => setFailureMode(false)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
               !failureMode
-                ? 'bg-emerald-600 text-white shadow-sm'
+                ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
             }`}
           >
@@ -54,7 +54,7 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
             onClick={() => setFailureMode(true)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
               failureMode
-                ? 'bg-rose-600 text-white shadow-sm'
+                ? 'bg-rose-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
             }`}
           >
@@ -64,27 +64,27 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
         </div>
       </div>
 
-      {/* Mode Banner */}
+      {/* Mode Summary */}
       <div
-        className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+        className={`mb-5 rounded-xl border px-4 py-3 text-sm leading-6 ${
           failureMode
-            ? 'border-rose-500/30 bg-rose-500/10 text-rose-900 dark:text-rose-200'
-            : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300'
+            ? 'border-rose-500/25 bg-rose-500/[0.08] text-rose-900 dark:text-rose-100'
+            : 'border-stone-200 bg-stone-50 text-slate-700 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300'
         }`}
       >
         {failureMode ? (
           <>
-            <p className="font-semibold text-rose-700 dark:text-rose-300">{data.failureTitle}</p>
-            <p className="mt-0.5 text-sm">{data.failureSummary}</p>
+            <p className="font-bold text-rose-700 dark:text-rose-300">{data.failureTitle}</p>
+            <p className="prose-measure mt-0.5 text-sm">{data.failureSummary}</p>
           </>
         ) : (
-          <p>{data.normalSummary}</p>
+          <p className="prose-measure">{data.normalSummary}</p>
         )}
       </div>
 
       {/* Diagram + Inspector Grid */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-3 lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3 lg:col-span-2">
           <svg
             viewBox="0 0 800 340"
             className="h-auto w-full min-w-[540px]"
@@ -277,7 +277,7 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
           </svg>
 
           {/* Legend */}
-          <div className="mt-2 flex flex-wrap items-center gap-4 px-2 text-[11px] text-slate-400">
+          <div className="mt-2.5 flex flex-wrap items-center gap-4 px-2 text-[11px] text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-5 bg-slate-400" /> Sync call
             </span>
@@ -300,21 +300,20 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
           </div>
         </div>
 
-        {/* Component Inspector Card */}
+        {/* Calm Component Inspector */}
         {selectedNode && (
-          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/70">
+          <div className="flex flex-col justify-between rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
             <div>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                  <Info className="h-3.5 w-3.5" />
-                  Component Inspector
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  Selected Component
                 </span>
-                <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <span className="font-medium text-slate-500 dark:text-slate-400">
                   {NODE_COLORS[selectedNode.kind].badge}
                 </span>
               </div>
 
-              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+              <h4 className="mt-1.5 text-lg font-extrabold text-slate-900 dark:text-white">
                 {selectedNode.label}
               </h4>
               {selectedNode.sublabel && (
@@ -323,27 +322,27 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
                 </p>
               )}
 
-              <div className="mt-3 space-y-3 text-sm">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Role in Normal Operation
+              <div className="mt-4 space-y-4 text-sm">
+                <div className={failureMode ? 'opacity-65' : ''}>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Normal Operation
                   </p>
-                  <p className="mt-1 leading-relaxed text-slate-700 dark:text-slate-300">
+                  <p className="mt-1 leading-6 text-slate-700 dark:text-slate-200">
                     {selectedNode.beginnerSummary}
                   </p>
                 </div>
 
                 <div
-                  className={`rounded-lg border p-3 ${
+                  className={`rounded-xl border p-3.5 transition ${
                     failureMode
-                      ? 'border-rose-500/30 bg-rose-500/10'
-                      : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
+                      ? 'border-rose-500/30 bg-rose-500/[0.08]'
+                      : 'border-stone-200 bg-white dark:border-slate-700/80 dark:bg-[#162033]'
                   }`}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                  <p className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
                     Under Failure / Spike
                   </p>
-                  <p className="mt-1 leading-relaxed text-slate-700 dark:text-slate-200">
+                  <p className="mt-1 leading-6 text-slate-700 dark:text-slate-200">
                     {selectedNode.failureNote}
                   </p>
                 </div>
@@ -351,7 +350,7 @@ export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
             </div>
 
             <p className="mt-4 text-[11px] text-slate-500 dark:text-slate-400">
-              Tip: Click other boxes on the diagram to see how each part behaves.
+              Click any other box on the diagram to inspect it.
             </p>
           </div>
         )}

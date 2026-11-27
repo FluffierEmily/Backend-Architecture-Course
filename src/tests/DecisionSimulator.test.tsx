@@ -32,7 +32,7 @@ describe('DecisionSimulator', () => {
     render(<DecisionSimulator completedChoices={{}} onRecordChoice={vi.fn()} />);
 
     const secondScenario = SIMULATOR_SCENARIOS[1];
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(secondScenario.company, 'i') }));
+    fireEvent.click(screen.getByRole('button', { name: /next case/i }));
 
     expect(screen.getByRole('heading', { name: secondScenario.title })).toBeInTheDocument();
 

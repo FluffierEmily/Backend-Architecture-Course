@@ -9,6 +9,7 @@ import { SimulatorPage } from './pages/SimulatorPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { useCourseProgress } from './hooks/useCourseProgress';
 import { useTheme } from './hooks/useTheme';
+import { useReadingPrefs } from './hooks/useReadingPrefs';
 import { ARCHITECTURE_BY_ID } from './data';
 import type { ArchitectureId } from './types/course';
 
@@ -50,13 +51,16 @@ export function AppRoutes() {
   } = useCourseProgress();
 
   const { theme, toggleTheme } = useTheme();
+  const { prefs, toggleCalmMotion } = useReadingPrefs();
 
   return (
     <Layout
       progress={progress}
       overallPercent={overallPercent}
       theme={theme}
+      readingPrefs={prefs}
       onToggleTheme={toggleTheme}
+      onToggleCalmMotion={toggleCalmMotion}
       onResetProgress={resetProgress}
     >
       <RouteMetadata />
