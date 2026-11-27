@@ -135,6 +135,33 @@ export const eventDrivenModule: ArchitectureModule = {
       keyTakeaway:
         'Assume at-least-once delivery everywhere: Outbox prevents lost events, and Idempotency prevents duplicate side effects.',
     },
+    {
+      id: 'eda-fat-thin-claim-check',
+      badge: 'Event Payload Design',
+      title: 'Fat vs. Thin Events & The Claim Check Pattern',
+      summary:
+        'Deciding how much data to pack into an event directly impacts coupling, privacy, and broker health.',
+      bulletPoints: [
+        'Thin Notification Events (`{ tripId }`): Tiny and always fresh, but if 6 consumers immediately query the producer API back, you can accidentally DDoS your own producer.',
+        'Fat Events (Event-Carried State Transfer): Include the key fields consumers need (`tripId`, `fareCents`, `city`) so consumers work offline — just avoid stuffing mutable secrets or sensitive PII inside long-lived logs.',
+        'Claim Check Pattern: Never push 15MB PDFs or images through Kafka/RabbitMQ. Upload the file to S3/R2 first and put only the small file URI/key in the event.',
+      ],
+      keyTakeaway:
+        'Include the compact business snapshot consumers need, keep PII out of immutable logs, and use the Claim Check pattern for any large binary.',
+    },
+    {
+      id: 'eda-choreography-vs-orchestration',
+      badge: 'Workflow Control',
+      title: 'Choreography vs. Orchestration (Avoiding Event Spaghetti)',
+      summary:
+        'Pure event choreography ("each service reacts on its own") feels effortless for 3 consumers — until a complex 8-step business flow becomes impossible to trace or debug.',
+      bulletPoints: [
+        'Choreography shines for independent side-effect fan-out: `TripCompleted` → Receipts, Analytics, Loyalty, Driver Earnings.',
+        'Orchestration shines for strict multi-step business workflows with branching, timeouts, and refunds (e.g., checkout sagas) where one coordinator tracks state explicitly.',
+      ],
+      keyTakeaway:
+        'Use choreography for decoupled fan-out across domains, and switch to an explicit orchestrator when you need one clear place to see "where is this order stuck right now?"',
+    },
   ],
   codeComparisons: [
     {
@@ -358,6 +385,16 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       detail:
         'Malformed "poison pill" events should move to a DLQ after N retries, and consumer lag alerts should fire before backlogs grow silently.',
     },
+    {
+      title: 'Wrap Events in a Standard Schema-Validated Envelope',
+      detail:
+        'Use a consistent envelope (`eventId`, `eventType`, `schemaVersion`, `occurredAt`, `correlationId`, `source`, `data`) validated with Zod, JSON Schema, or Avro.',
+    },
+    {
+      title: 'Use the Claim Check Pattern for Large Payloads',
+      detail:
+        'Store large attachments (PDFs, images, exports) in S3/object storage and pass only the lightweight storage key inside the event message.',
+    },
   ],
   pitfalls: [
     {
@@ -366,19 +403,29 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       fix: 'Use isolated consumer groups on durable logs (Kafka) or publish backfills to a dedicated non-live topic.',
     },
     {
+      title: 'Storing Sensitive PII in Immutable Event Logs',
+      symptom: 'A customer invokes their GDPR "right to be forgotten," but their raw email and address are permanently baked into 90 days of immutable Kafka topics.',
+      fix: 'Keep raw PII in an encrypted reference store (emit only `userId`) or encrypt per-user fields with erasable keys (crypto-shredding).',
+    },
+    {
+      title: 'Passing Large Blobs Inside Messages',
+      symptom: 'Publishing 15MB PDFs or images straight into RabbitMQ/Kafka spikes broker memory, hits message size caps, and stalls other consumers.',
+      fix: 'Apply the Claim Check Pattern: upload binaries to object storage and emit only the small URI/key.',
+    },
+    {
+      title: 'Silent Consumer Lag & Poison Pill Stalls',
+      symptom: 'One malformed message retries forever and blocks its entire partition while consumer lag quietly grows to hours with nobody alerted.',
+      fix: 'Cap retries, route unparseable poison pills to a Dead Letter Queue, and set automated alerts on both consumer lag and DLQ depth.',
+    },
+    {
       title: 'Event Spaghetti (Hard-to-Trace Pinball Chains)',
       symptom: 'Event A triggers B which triggers C and D across 6 services, and nobody knows the full flow anymore.',
-      fix: 'Keep event chains shallow, document event contracts centrally, and propagate a `correlationId` across every emitted event.',
+      fix: 'Keep event chains shallow, introduce an orchestrator for complex multi-step workflows, and propagate a `correlationId` across every emitted event.',
     },
     {
       title: 'Assuming Strict Global Ordering',
       symptom: '`TripCompleted` arrives before `TripStarted` due to parallel consumers, corrupting status fields.',
       fix: 'Partition events by entity ID (e.g., `tripId`) and guard state transitions defensively.',
-    },
-    {
-      title: 'Forgetting Eventual Consistency in the UI',
-      symptom: 'Frontend immediately fetches `/receipt` right after `/complete` and shows a 404 because the async consumer took 300ms.',
-      fix: 'Design UI states for "Generating receipt..." and push updates via polling, SSE, or WebSockets.',
     },
   ],
   miniChecks: [

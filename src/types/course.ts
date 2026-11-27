@@ -151,7 +151,18 @@ export interface ArchitectureModule {
 export interface FoundationBlock {
   id: string;
   name: string;
-  icon: 'globe' | 'shield' | 'database' | 'layers' | 'zap' | 'scale' | 'cpu' | 'gauge';
+  icon:
+    | 'globe'
+    | 'shield'
+    | 'database'
+    | 'layers'
+    | 'zap'
+    | 'scale'
+    | 'cpu'
+    | 'gauge'
+    | 'activity'
+    | 'lock'
+    | 'git-branch';
   oneLiner: string;
   realWorldAnalogy: string;
   howItWorks: string;

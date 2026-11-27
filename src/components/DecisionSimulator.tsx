@@ -168,8 +168,8 @@ export function DecisionSimulator({
             </div>
           </div>
 
-          {/* Quiet 8-Segment Progress Track */}
-          <div className="grid grid-cols-8 gap-1.5" aria-hidden="true">
+          {/* Quiet Segmented Progress Track */}
+          <div className="flex gap-1.5" aria-hidden="true">
             {SIMULATOR_SCENARIOS.map((s, idx) => {
               const saved = completedChoices[s.id];
               const isCurrent = idx === scenarioIdx;
@@ -181,7 +181,7 @@ export function DecisionSimulator({
                   tabIndex={-1}
                   title={`Case ${idx + 1}: ${s.company}`}
                   onClick={() => handleSelectScenario(idx)}
-                  className={`h-1.5 rounded-full transition-colors ${
+                  className={`h-1.5 flex-1 rounded-full transition-colors ${
                     isCurrent
                       ? 'bg-indigo-500'
                       : isBest

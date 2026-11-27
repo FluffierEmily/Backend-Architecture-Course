@@ -9,7 +9,7 @@ This document audits the current course content across Foundations (`src/data/fo
 | Priority | Theme | Status | Why It Matters for Beginners |
 | --- | --- | --- | --- |
 | **P0 (High Impact)** | Caching, Rate Limiting & Backpressure, Hybrid/Evolutionary Architecture (Strangler Fig), Cross-Service Queries & Sagas, Queues vs. Event Logs, Denial-of-Wallet & Replay Safety | ✅ Implemented | Frequently encountered in real jobs and interviews; directly prevents the most expensive beginner outages. |
-| **P1 (Important)** | Observability (Logs/Metrics/Traces & Health Checks), Security & Auth Across Architectures, Zero-Downtime DB Migrations, Fat vs. Thin Events & Claim Check Pattern | Planned | Bridges the gap between "it works locally" and running a real backend in production. |
+| **P1 (Important)** | Observability (Logs/Metrics/Traces & Health Checks), Security & Auth Across Architectures, Zero-Downtime DB Migrations, Fat vs. Thin Events & Claim Check Pattern, Circuit Breakers & API Versioning, Cold Starts & Thin Adapters, Brownfield "Evolve a System" Simulator Cases | ✅ Implemented | Bridges the gap between "it works locally" and running a real backend in production. |
 | **P2 (Stretch / Next Level)** | Contract Testing, Cost Modeling Intuition, Vendor Lock-In & Local Emulation, GDPR/PII in Event Logs, "Evolve a System" Simulator Scenarios | Planned | Deepens architectural judgment once core mental models are solid. |
 
 ---

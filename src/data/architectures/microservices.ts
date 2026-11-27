@@ -155,6 +155,32 @@ export const microservicesModule: ArchitectureModule = {
       keyTakeaway:
         'Never replace a SQL JOIN with a `for` loop of individual HTTP calls (N+1 network calls) — use batch APIs, BFF composition, or event-synced read models.',
     },
+    {
+      id: 'ms-circuit-breaker',
+      badge: 'Resilience Patterns',
+      title: 'Circuit Breakers & Bulkheads (Stopping Cascading Failures)',
+      summary:
+        'When a downstream service hangs, timeouts alone still waste threads on every incoming request. Circuit Breakers and Bulkheads protect your healthy services from sinking with a sick neighbor.',
+      bulletPoints: [
+        'Circuit Breaker states: Closed (normal traffic) → Open (after repeated failures, fail fast immediately with a fallback without hitting the dead service) → Half-Open (send a few probe requests to test recovery).',
+        'Bulkhead Pattern: Like watertight ship compartments, give each downstream dependency its own capped connection/concurrency pool so a slow Recommendations service never exhausts Playback’s sockets.',
+      ],
+      keyTakeaway:
+        'Failing fast with a cached fallback beats waiting 5 seconds for a guaranteed timeout — and gives struggling downstream services breathing room to recover.',
+    },
+    {
+      id: 'ms-api-versioning',
+      badge: 'Independent Deploys',
+      title: 'API Versioning & Backward-Compatible Contracts',
+      summary:
+        'True microservices must be deployable in any order without coordinating a company-wide release window. That only works when internal APIs evolve without breaking existing callers.',
+      bulletPoints: [
+        'Make JSON changes additive-only: add new optional fields instead of renaming or deleting live fields.',
+        'Follow the Tolerant Reader pattern (ignore unknown fields you don’t need) and pair OpenAPI schemas with consumer-driven contract tests in CI.',
+      ],
+      keyTakeaway:
+        'Treat every internal service API like a public API — breaking changes require a versioned rollout and a deprecation window, never a surprise deploy.',
+    },
   ],
   codeComparisons: [
     {
@@ -370,6 +396,11 @@ export async function getHomeFeed(userId: string) {
       detail:
         'Pass a `x-request-id` / OpenTelemetry trace ID through every hop so you can debug a request spanning 5 services.',
     },
+    {
+      title: 'Treat Internal APIs Like Public Contracts',
+      detail:
+        'Validate payloads at service boundaries, keep JSON schema evolution additive-only, and run automated contract tests so teams can deploy safely in any order.',
+    },
   ],
   pitfalls: [
     {
@@ -381,6 +412,11 @@ export async function getHomeFeed(userId: string) {
       title: 'N+1 Network Calls',
       symptom: 'A dashboard endpoint takes 3 seconds because it fetches 40 records and loops over another service’s `GET /:id` endpoint.',
       fix: 'Expose batch endpoints (`POST /batch`), use a BFF aggregator, or maintain a local event-synced read model.',
+    },
+    {
+      title: 'Shared "Common" Business-Logic NPM Packages',
+      symptom: 'Publishing an internal `@company/core-logic` package used by 10 services forces all 10 services to bump versions, rebuild, and redeploy together on every rule tweak.',
+      fix: 'Limit shared libraries to tiny, stable infrastructure helpers (logging, auth parsing) and duplicate small domain helpers rather than coupling deploys.',
     },
     {
       title: 'Microservice Envy at a 3-Person Startup',

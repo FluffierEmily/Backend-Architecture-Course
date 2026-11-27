@@ -107,7 +107,7 @@ export function FoundationsPage({ isCompleted, onMarkComplete }: FoundationsPage
         <section className="space-y-4">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-              10 Architecture Terms You’ll Hear Everywhere
+              {BEGINNER_GLOSSARY.length} Architecture Terms You’ll Hear Everywhere
             </h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               A quick pocket glossary — plain English, no textbook jargon.

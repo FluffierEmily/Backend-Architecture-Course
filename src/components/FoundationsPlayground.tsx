@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Activity,
   AlertTriangle,
   Check,
   ChevronDown,
@@ -9,8 +10,10 @@ import {
   Cpu,
   Database,
   Gauge,
+  GitBranch,
   Globe,
   Layers,
+  Lock,
   Scale,
   Shield,
   Zap,
@@ -27,6 +30,9 @@ const BLOCK_ICONS: Record<FoundationBlock['icon'], typeof Globe> = {
   scale: Scale,
   cpu: Cpu,
   gauge: Gauge,
+  activity: Activity,
+  lock: Lock,
+  'git-branch': GitBranch,
 };
 
 interface FoundationsPlaygroundProps {
@@ -129,8 +135,8 @@ export function FoundationsPlayground({
               </div>
             </div>
 
-            {/* Quiet 8-Segment Progress Track */}
-            <div className="grid grid-cols-8 gap-1.5" aria-hidden="true">
+            {/* Quiet Segmented Progress Track */}
+            <div className="flex gap-1.5" aria-hidden="true">
               {FOUNDATION_BLOCKS.map((block, index) => {
                 const isCurrent = index === activeIndex;
                 const isVisited = visitedIds.includes(block.id);
@@ -141,7 +147,7 @@ export function FoundationsPlayground({
                     tabIndex={-1}
                     title={`${index + 1}. ${block.name}`}
                     onClick={() => selectBlock(index)}
-                    className={`h-1.5 rounded-full transition-colors ${
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
                       isCurrent
                         ? 'bg-indigo-500'
                         : isVisited

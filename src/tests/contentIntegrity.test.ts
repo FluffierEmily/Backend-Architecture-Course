@@ -84,8 +84,8 @@ describe('Course content integrity', () => {
     }
   });
 
-  it('defines complete outcomes and valid 1-5 scores for all 8 simulator scenarios', () => {
-    expect(SIMULATOR_SCENARIOS.length).toBe(8);
+  it('defines complete outcomes and valid 1-5 scores for all 10 simulator scenarios (greenfield + brownfield)', () => {
+    expect(SIMULATOR_SCENARIOS.length).toBe(10);
 
     for (const scenario of SIMULATOR_SCENARIOS) {
       expect(EXPECTED_ARCH_IDS).toContain(scenario.bestFit);
@@ -105,10 +105,13 @@ describe('Course content integrity', () => {
     }
   });
 
-  it('provides beginner foundation blocks including caching and rate limiting', () => {
-    expect(FOUNDATION_BLOCKS.length).toBeGreaterThanOrEqual(8);
+  it('provides beginner foundation blocks including caching, rate limiting, observability, auth, and migrations', () => {
+    expect(FOUNDATION_BLOCKS.length).toBeGreaterThanOrEqual(11);
     const ids = FOUNDATION_BLOCKS.map((b) => b.id);
     expect(ids).toContain('caching');
     expect(ids).toContain('rate-limiting-backpressure');
+    expect(ids).toContain('observability');
+    expect(ids).toContain('security-auth');
+    expect(ids).toContain('zero-downtime-migrations');
   });
 });

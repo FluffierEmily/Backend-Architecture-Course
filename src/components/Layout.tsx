@@ -17,7 +17,7 @@ import {
   Sun,
   X,
 } from 'lucide-react';
-import { ARCHITECTURE_MODULES } from '../data';
+import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import type { ThemeMode } from '../hooks/useTheme';
 import type { ReadingPrefs } from '../hooks/useReadingPrefs';
@@ -274,7 +274,7 @@ export function Layout({
                     Decision Simulator
                   </span>
                   <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 font-mono text-[11px] font-bold">
-                    {Object.keys(progress.simulatorChoices).length}/8
+                    {Object.keys(progress.simulatorChoices).length}/{SIMULATOR_SCENARIOS.length}
                   </span>
                 </NavLink>
                 <NavLink to="/projects" className={navLinkClass} onClick={closeSidebarNow}>

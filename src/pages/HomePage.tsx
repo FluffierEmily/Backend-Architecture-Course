@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, CheckCircle2, Compass, FolderGit2 } from 'lucide-react';
-import { ARCHITECTURE_MODULES } from '../data';
+import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 
 interface HomePageProps {
@@ -31,7 +31,7 @@ function getNextRecommendedStep(progress: CourseProgressState) {
   return {
     label: 'Open Decision Simulator',
     to: '/simulator',
-    note: 'All modules complete · Test your instincts on 8 company briefs',
+    note: `All modules complete · Test your instincts on ${SIMULATOR_SCENARIOS.length} company briefs`,
   };
 }
 

@@ -105,6 +105,45 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
       'A queue absorbs temporary spikes, NOT permanent overload! If producers push 500 jobs/sec forever while workers only process 100/sec, the queue grows unbounded until delays hit hours or brokers crash.',
     relevantArchitectures: ['serverless', 'microservices', 'event-driven', 'modular-monolith'],
   },
+  {
+    id: 'observability',
+    name: 'Observability, Health Checks & Graceful Shutdown',
+    icon: 'activity',
+    oneLiner: 'Seeing what your backend is doing in production — and shutting down safely without dropping live requests.',
+    realWorldAnalogy:
+      'An airplane cockpit combines black-box logs, live speed/altitude gauges, and flight-path radar so pilots spot trouble before an engine stalls.',
+    howItWorks:
+      'Production observability rests on 3 pillars: Structured JSON Logs (searchable events with a correlationId), Metrics (request rate, error rate, and p50/p95/p99 latency), and Distributed Traces (following one request across services). Expose separate Liveness ("is the process alive?") and Readiness ("can it take traffic?") health checks, and listen for SIGTERM to drain in-flight HTTP requests and queue jobs before exiting.',
+    beginnerWatchOut:
+      'Never rely on average latency! An "80ms average" can hide a miserable p99 of 4.2 seconds for your slowest 1% of users. And killing containers abruptly on deploy drops active payments and half-finished queue jobs.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+  },
+  {
+    id: 'security-auth',
+    name: 'Auth, Trust Boundaries & Webhook Security',
+    icon: 'lock',
+    oneLiner: 'How user identity, internal service calls, secrets, and external webhooks stay trustworthy across architectures.',
+    realWorldAnalogy:
+      'A concert checks your ticket at the front gate (edge auth), gives staff backstage badges for restricted rooms (service auth), and verifies sealed VIP deliveries (webhook signatures).',
+    howItWorks:
+      'Monoliths often use server-side sessions (easy instant logout via Redis/DB). Microservices and Serverless favor stateless signed JWTs verified at the API Gateway so every function doesn’t hit an auth DB — trading instant revocation for speed. Inside a distributed backend, verify internal callers with mTLS or signed service tokens, load API keys from a Secrets Manager (never Git), and verify third-party webhooks using HMAC signatures + timestamp replay checks.',
+    beginnerWatchOut:
+      'Long-lived JWTs cannot be easily revoked if stolen — pair short-lived access tokens (5–15 min) with rotatable refresh tokens. On public webhooks (Stripe, GitHub), skipping HMAC verification lets anyone forge "payment succeeded" events.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+  },
+  {
+    id: 'zero-downtime-migrations',
+    name: 'Zero-Downtime Database Migrations',
+    icon: 'git-branch',
+    oneLiner: 'Evolving live database schemas safely while old and new backend instances run side-by-side.',
+    realWorldAnalogy:
+      'Building a new bridge lane next to the old one, routing cars over gradually, and demolishing the old lane only after zero cars use it.',
+    howItWorks:
+      'Use the Expand-and-Contract pattern across rolling deploys: (1) Expand — add the new nullable column or table first; (2) Dual-write & backfill existing rows while old code still works; (3) Switch reads to the new column in the next deploy; (4) Contract — drop the obsolete column only after every old server instance is gone.',
+    beginnerWatchOut:
+      'Renaming or dropping a live column in a single deployment immediately breaks every still-running server container before the rollout finishes, causing instant 500 errors.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+  },
 ];
 
 export const BEGINNER_GLOSSARY = [
@@ -157,5 +196,25 @@ export const BEGINNER_GLOSSARY = [
     term: 'Strangler Fig Pattern',
     meaning:
       'Safely migrating a legacy monolith by incrementally routing one feature at a time to new services instead of doing a risky big-bang rewrite.',
+  },
+  {
+    term: 'p95 / p99 Tail Latency',
+    meaning:
+      'The response time threshold met by 95% or 99% of requests — exposes slow worst-case user experiences that averages hide.',
+  },
+  {
+    term: 'Expand-and-Contract Migration',
+    meaning:
+      'A zero-downtime DB migration strategy: add new columns first, dual-write and backfill, switch reads, then drop old columns in a later deploy.',
+  },
+  {
+    term: 'Circuit Breaker',
+    meaning:
+      'A resilience guard (Closed → Open → Half-Open) that temporarily stops calling a failing dependency so it can recover instead of collapsing your app.',
+  },
+  {
+    term: 'Claim Check Pattern',
+    meaning:
+      'Uploading large files (PDFs, videos) to object storage like S3 and sending only the small file URI/key through a message broker.',
   },
 ];

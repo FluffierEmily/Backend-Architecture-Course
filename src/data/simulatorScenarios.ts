@@ -587,4 +587,149 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
       },
     },
   },
+  {
+    id: 'sim-evolve-pdf-monolith',
+    title: 'Evolve a System: Monolith Whose Month-End PDFs Crash Checkout',
+    company: 'LedgerLeaf',
+    brief:
+      'LedgerLeaf already runs a healthy Modular Monolith maintained by 8 engineers. Everything works great — EXCEPT on the last two days of every month, thousands of heavy PDF report exports saturate CPU and cause Checkout requests to time out. Which architecture should you extract JUST the PDF reporting slice into?',
+    constraints: {
+      teamSize: '8 engineers (want to keep core monolith simple)',
+      trafficPattern: 'Core app steady; PDF exports 95% idle then massive month-end spikes',
+      budgetOps: 'No budget or desire for a 9-month full rewrite',
+      latencyConsistency: 'Checkout must stay fast; PDFs can finish asynchronously in 10–20s',
+      timeToMarket: 'Stop month-end checkout outages before next billing cycle',
+    },
+    bestFit: 'serverless',
+    outcomes: {
+      serverless: {
+        verdict: 'best-fit',
+        headline: 'Pragmatic Strangler Fig win! Core stays simple while Serverless absorbs PDF bursts.',
+        sixMonthsLater:
+          'LedgerLeaf kept Auth, Ledger, and Checkout inside their clean Modular Monolith and extracted ONLY the PDF export slice into a queue-triggered Serverless function. Checkout stayed rock-solid during month-end and PDF compute cost under $30/month.',
+        whatWorked: [
+          'Solved 100% of month-end outages in 2 weeks with zero big-bang rewrite.',
+          'CPU-heavy PDF rendering moved completely off the monolith’s Node.js event loop.',
+          'Paid near-$0 for PDF compute during the 28 quiet days of each month.',
+        ],
+        whatHurt: [
+          'Added a presigned S3 download link + polling status badge in the UI.',
+        ],
+        scores: { devSpeed: 5, opsSimplicity: 5, scaling: 5, costEfficiency: 5, faultIsolation: 5 },
+      },
+      'modular-monolith': {
+        verdict: 'risky',
+        headline: 'Leaving CPU-heavy PDF bursts inside the web monolith keeps hurting Checkout.',
+        sixMonthsLater:
+          'Without isolating the bursty PDF compute off the main web tier, every month-end required manually scaling expensive app servers up and down — and one giant PDF still spiked Checkout p99 latency.',
+        whatWorked: [
+          'Zero new deployment targets to configure.',
+        ],
+        whatHurt: [
+          'Paying for oversized web containers all month just for 2 days of PDF spikes.',
+          'Shared event-loop/CPU contention kept threatening Checkout.',
+        ],
+        scores: { devSpeed: 4, opsSimplicity: 4, scaling: 2, costEfficiency: 2, faultIsolation: 2 },
+      },
+      microservices: {
+        verdict: 'over-engineered',
+        headline: 'Full microservices rewrite freezes features for months to fix one hot endpoint.',
+        sixMonthsLater:
+          'Breaking the entire 8-person monolith into 7 always-on container microservices blew past the timeline, created distributed transaction bugs in Billing, and cost more at idle than extracting just one Serverless worker.',
+        whatWorked: [
+          'Isolated PDF rendering from Checkout.',
+        ],
+        whatHurt: [
+          'Classic "big-bang rewrite" trap — months of lost product velocity.',
+          '8 engineers stuck operating Kubernetes for one bursty feature.',
+        ],
+        scores: { devSpeed: 1, opsSimplicity: 1, scaling: 4, costEfficiency: 2, faultIsolation: 4 },
+      },
+      'event-driven': {
+        verdict: 'viable',
+        headline: 'Good async decoupling, though an always-on broker + worker fleet is heavier than Serverless here.',
+        sixMonthsLater:
+          'Queueing PDF jobs protected Checkout nicely, but running a full managed streaming broker + dedicated PDF worker containers 24/7 cost more and took more ops work than a simple queue-triggered serverless function.',
+        whatWorked: [
+          'Checkout stopped timing out during month-end surges.',
+        ],
+        whatHurt: [
+          'Always-on broker/worker capacity sat idle 95% of the month.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 3, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
+      },
+    },
+  },
+  {
+    id: 'sim-evolve-order-webhooks',
+    title: 'Evolve a System: Untangling a Brittle 6-Partner Checkout Handler',
+    company: 'CraftBay',
+    brief:
+      'CraftBay’s existing backend grew organically: right now `completeOrder()` synchronously calls Inventory, Shipping Labels, Loyalty Points, Fraud Analytics, Email Receipts, and Partner Webhooks in one request. Whenever any single partner slows down, customers see checkout errors and abandoned carts.',
+    constraints: {
+      teamSize: '22 engineers across 4 product squads',
+      trafficPattern: 'Heavy weekend flash-sale surges (2,500 orders/min)',
+      budgetOps: 'Team can run a managed broker (RabbitMQ / Kafka / SQS+SNS)',
+      latencyConsistency: 'Order payment must reply fast; all 5 downstream reactions can run async',
+      timeToMarket: 'Stop partner hiccups from breaking Checkout within 6 weeks',
+    },
+    bestFit: 'event-driven',
+    outcomes: {
+      'event-driven': {
+        verdict: 'best-fit',
+        headline: 'Clean evolutionary decoupling! One Outbox event replaces 6 fragile sync calls.',
+        sixMonthsLater:
+          'CraftBay refactored `completeOrder()` to save the order + an `OrderConfirmed` Outbox row in one transaction and return immediately. Five independent idempotent consumers now react via the broker, so a 30-minute Shipping API outage no longer loses a single sale.',
+        whatWorked: [
+          'Checkout p99 latency dropped from 3.4s to 180ms.',
+          'Flaky partner APIs retry safely in the background with Dead Letter Queues.',
+          'Adding a 7th downstream subscriber (SMS alerts) required zero changes to Checkout.',
+        ],
+        whatHurt: [
+          'Added idempotency keys, correlation IDs, and consumer-lag alerting.',
+        ],
+        scores: { devSpeed: 4, opsSimplicity: 3, scaling: 5, costEfficiency: 4, faultIsolation: 5 },
+      },
+      'modular-monolith': {
+        verdict: 'risky',
+        headline: 'Keeping 6 synchronous external calls in one handler leaves Checkout fragile.',
+        sixMonthsLater:
+          'Tidying folders inside the monolith improved readability, but as long as `completeOrder()` waited synchronously on 6 downstream partners, every weekend sale still failed whenever Email or Shipping hiccupped.',
+        whatWorked: [
+          'Low initial deployment changes.',
+        ],
+        whatHurt: [
+          'Partner timeouts kept directly causing lost checkout revenue.',
+          'All 4 squads still collided editing the same checkout orchestration file.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 4, scaling: 2, costEfficiency: 4, faultIsolation: 1 },
+      },
+      microservices: {
+        verdict: 'viable',
+        headline: 'Splitting into sync HTTP microservices still leaves brittle point-to-point fan-out.',
+        sixMonthsLater:
+          'Moving Loyalty and Shipping into separate HTTP services without an event broker just turned in-process failures into network timeout chains — Checkout still had to know about and retry all 5 downstream URLs.',
+        whatWorked: [
+          'Separate deploys for each domain team.',
+        ],
+        whatHurt: [
+          'Point-to-point sync HTTP calls remained tightly coupled during flash sales.',
+        ],
+        scores: { devSpeed: 2, opsSimplicity: 2, scaling: 4, costEfficiency: 3, faultIsolation: 3 },
+      },
+      serverless: {
+        verdict: 'viable',
+        headline: 'Great for individual partner workers, but you still need an Event-Driven pub/sub core.',
+        sixMonthsLater:
+          'Serverless functions worked well for executing flaky Partner Webhooks, yet coordinating 6 independent subscribers reliably still boiled down to adopting an Event-Driven Outbox + pub/sub fan-out pattern.',
+        whatWorked: [
+          'Easy auto-scaling for lightweight webhook retries.',
+        ],
+        whatHurt: [
+          'Without a durable event broker & standard envelope, fan-out tracking stayed messy.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 3, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
+      },
+    },
+  },
 ];

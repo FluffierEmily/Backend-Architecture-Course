@@ -135,6 +135,19 @@ export const modularMonolithModule: ArchitectureModule = {
       keyTakeaway:
         'Shared process = shared blast radius for CPU spikes and memory leaks. Isolate heavy compute into background worker processes.',
     },
+    {
+      id: 'mm-boundary-enforcement',
+      badge: 'CI & Architecture Hygiene',
+      title: 'Enforcing Boundaries & Background Workers in Practice',
+      summary:
+        'Good intentions fade under deadlines. Real Modular Monoliths stay clean because CI blocks bad imports automatically and heavy jobs run in a separate worker process from the same repo.',
+      bulletPoints: [
+        'Use `eslint-plugin-boundaries`, `dependency-cruiser`, or TypeScript project references so CI rejects any import reaching past another module’s `publicApi.ts`.',
+        'Run two processes from the same codebase: `node dist/web.js` for fast HTTP traffic and `node dist/worker.js` for scheduled reports, email batches, and heavy exports.',
+      ],
+      keyTakeaway:
+        'Automate boundary checks in CI and separate HTTP vs. worker processes — that single habit prevents 90% of monoliths from decaying into spaghetti.',
+    },
   ],
   codeComparisons: [
     {
@@ -365,6 +378,16 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
       detail:
         'In-memory events disappear on restart. Back emails, reports, and webhooks with a persistent queue (BullMQ / pg-boss) and run heavy CPU jobs in a separate worker process.',
     },
+    {
+      title: 'Return Plain DTOs Across Module Boundaries',
+      detail:
+        'Expose simple TypeScript data objects from `publicApi.ts` rather than raw ORM entities with lazy-loaded database handles that leak persistence coupling.',
+    },
+    {
+      title: 'Route Heavy Reporting Queries to a Read Replica',
+      detail:
+        'Point analytics dashboards and bulk CSV exports at a read replica so expensive read queries never starve core transactional writes.',
+    },
   ],
   pitfalls: [
     {
@@ -381,6 +404,16 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
       title: 'Losing In-Process Events on Crash or Deploy',
       symptom: 'Welcome emails or billing syncs randomly vanish whenever a container restarts during a rolling deploy.',
       fix: 'Persist critical events in a database Outbox table or durable job queue instead of fire-and-forget RAM emitters.',
+    },
+    {
+      title: 'Shared Mega-ORM Models',
+      symptom: 'Every module imports one giant 40-column `User` or `Organization` ORM class with cascading relations, turning every schema tweak into a repo-wide refactor.',
+      fix: 'Keep each module’s persistence model focused on its own columns and pass lightweight DTOs across module boundaries.',
+    },
+    {
+      title: 'Cross-Module Long Transactions & DB Locks',
+      symptom: 'Wrapping calls across 4 modules inside one long database transaction triggers lock contention, slow checkouts, and random deadlocks.',
+      fix: 'Keep SQL transactions small and scoped to one module’s tables; coordinate secondary side effects after commit via events or a job queue.',
     },
     {
       title: 'Premature Extraction to Microservices',

@@ -134,6 +134,32 @@ export const serverlessModule: ArchitectureModule = {
       keyTakeaway:
         'Never pay a serverless function to `sleep()` or wait on another slow function — orchestrate multi-step flows with queues or durable workflows.',
     },
+    {
+      id: 'sl-cold-starts',
+      badge: 'Performance Tuning',
+      title: 'Cold Starts: Practical Causes & Mitigations',
+      summary:
+        'Cold starts aren’t mysterious magic — they happen when the cloud downloads your bundle, starts the runtime, and runs top-level initialization before your handler executes.',
+      bulletPoints: [
+        'Biggest culprits: bloated deployment bundles (importing entire monolithic SDKs), heavy ORM schema loading on startup, and unnecessary VPC network attachments.',
+        'Practical fixes: tree-shake with esbuild, import modular SDK v3 clients, bump memory slightly (more RAM also allocates faster CPU on Lambda), or use Edge runtimes for ultra-light auth/routing.',
+      ],
+      keyTakeaway:
+        'Shrinking your bundle from 25MB to 500KB often cuts cold starts from 1.8 seconds down to ~150ms — for free.',
+    },
+    {
+      id: 'sl-hexagonal-adapter',
+      badge: 'Portability & Testing',
+      title: 'Avoiding Vendor Lock-In with Thin Adapter Handlers',
+      summary:
+        'Mixing core business rules directly inside `APIGatewayProxyEvent` or `SQSEvent` handlers makes functions painful to unit-test locally and locks your logic to one cloud provider.',
+      bulletPoints: [
+        'Keep core TypeScript business logic in plain, cloud-agnostic functions (e.g., `processInvoice(input, deps)`).',
+        'Keep the Lambda / Worker handler as a 15-line adapter that parses the cloud event, calls your plain function, and formats the HTTP or queue response.',
+      ],
+      keyTakeaway:
+        'Thin cloud adapters give you instant local unit tests with Vitest — and let you move logic to containers or another cloud in hours instead of months.',
+    },
   ],
   codeComparisons: [
     {
@@ -353,6 +379,16 @@ export async function checkoutHandler(order: { id: string; total: number }) {
       detail:
         'Never have one serverless function sit idle awaiting another; connect multi-step jobs via queues, EventBridge, or Step Functions/Inngest.',
     },
+    {
+      title: 'Assign Per-Function Least-Privilege IAM Roles',
+      detail:
+        'Grant each function only the exact bucket prefix or table actions it needs — never share one broad admin role across every function.',
+    },
+    {
+      title: 'Use Presigned URLs for Large File Uploads & Downloads',
+      detail:
+        'Have a tiny intake function issue a short-lived S3/R2 presigned URL so 50MB files upload directly to storage, bypassing API Gateway payload limits completely.',
+    },
   ],
   pitfalls: [
     {
@@ -366,14 +402,19 @@ export async function checkoutHandler(order: { id: string; total: number }) {
       fix: 'Hand off work asynchronously via SQS, EventBridge, or a durable workflow engine.',
     },
     {
+      title: 'Bloated Deployment Bundles',
+      symptom: 'Cold starts jump to 2+ seconds because every tiny function ships giant monolithic SDKs, full ORMs, or unused locales.',
+      fix: 'Bundle and tree-shake per function with esbuild, import modular SDK sub-packages, and keep dependencies lean.',
+    },
+    {
+      title: 'Ignoring Platform Quotas & Payload Caps',
+      symptom: 'Uploads suddenly fail with `413` or `504` errors when users send >6MB payloads, hit API Gateway’s 29s timeout, or exhaust account-wide concurrency.',
+      fix: 'Stream large binaries directly to object storage via presigned URLs, move slow work onto queues, and reserve concurrency for critical endpoints.',
+    },
+    {
       title: 'Storing State in Memory or Local `/tmp`',
       symptom: 'In-memory rate limiters or cached files disappear randomly because requests hit different containers.',
       fix: 'Keep state in external managed stores (Redis, DynamoDB, Postgres, S3).',
-    },
-    {
-      title: 'Ignoring Cold Starts on User-Facing Critical Paths',
-      symptom: 'Occasional 1–2 second stalls on login or checkout endpoints after quiet periods.',
-      fix: 'Trim heavy npm dependencies, keep bundles lean, or use edge runtimes / provisioned concurrency on latency-critical routes.',
     },
   ],
   miniChecks: [

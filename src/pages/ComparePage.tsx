@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Compass } from 'lucide-react';
-import { ARCHITECTURE_MODULES } from '../data';
+import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId } from '../types/course';
 
 interface PriorityFilter {
@@ -365,7 +365,7 @@ export function ComparePage() {
             </button>
           ) : (
             <span className="text-sm text-slate-600 dark:text-slate-300">
-              Ready to test your judgment on 8 realistic company briefs?
+              Ready to test your judgment on {SIMULATOR_SCENARIOS.length} realistic company briefs?
             </span>
           )}
 
