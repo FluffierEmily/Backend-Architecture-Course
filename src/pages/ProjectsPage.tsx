@@ -1,5 +1,6 @@
 import { ALL_PRACTICE_PROJECTS, ARCHITECTURE_MODULES } from '../data';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
+import { ArchitectureIcon } from '../components/ArchitectureIcon';
 import type { ProjectArchitectureId } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
 
@@ -95,12 +96,13 @@ export function ProjectsPage({
                   role="tab"
                   aria-selected={isSelected}
                   onClick={() => setArchFilter(m.id)}
-                  className={`border-b-2 pb-3 text-sm font-semibold transition ${
+                  className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${
                     isSelected
                       ? 'border-indigo-500 text-slate-900 dark:text-white'
                       : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
+                  <ArchitectureIcon architectureId={m.id} className="h-3.5 w-3.5" colored />
                   {m.shortName}
                 </button>
               );
@@ -110,12 +112,13 @@ export function ProjectsPage({
               role="tab"
               aria-selected={archFilter === 'hybrid'}
               onClick={() => setArchFilter('hybrid')}
-              className={`border-b-2 pb-3 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${
                 archFilter === 'hybrid'
                   ? 'border-indigo-500 text-slate-900 dark:text-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
+              <ArchitectureIcon architectureId="hybrid" className="h-3.5 w-3.5" colored />
               Hybrid / Evolution
             </button>
           </div>

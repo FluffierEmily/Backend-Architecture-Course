@@ -1,10 +1,12 @@
 import { Activity, AlertOctagon } from 'lucide-react';
-import type { ArchitectureDiagramData, DiagramNode } from '../types/course';
+import type { ArchitectureDiagramData, ArchitectureId, DiagramNode } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { ArchitectureIconBadge } from './ArchitectureIcon';
 
 interface ArchitectureDiagramProps {
   data: ArchitectureDiagramData;
   storageKey?: string;
+  architectureId?: ArchitectureId;
 }
 
 const NODE_COLORS: Record<DiagramNode['kind'], { fill: string; stroke: string; badge: string }> = {
@@ -19,7 +21,11 @@ const NODE_COLORS: Record<DiagramNode['kind'], { fill: string; stroke: string; b
 
 const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
 
-export function ArchitectureDiagram({ data, storageKey = 'default' }: ArchitectureDiagramProps) {
+export function ArchitectureDiagram({
+  data,
+  storageKey = 'default',
+  architectureId,
+}: ArchitectureDiagramProps) {
   const [failureMode, setFailureMode] = usePersistedState<boolean>(
     `diagram.${storageKey}.failureMode`,
     false,
@@ -38,13 +44,16 @@ export function ArchitectureDiagram({ data, storageKey = 'default' }: Architectu
     <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Top Controls */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            Interactive Architecture Flow
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Click any box to inspect its role, or toggle a failure / traffic spike.
-          </p>
+        <div className="flex items-center gap-3">
+          {architectureId && <ArchitectureIconBadge architectureId={architectureId} size="sm" />}
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Interactive Architecture Flow
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Click any box to inspect its role, or toggle a failure / traffic spike.
+            </p>
+          </div>
         </div>
 
         <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-[#0f172a]">

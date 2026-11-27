@@ -309,7 +309,7 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
 
       {/* Scenario Context */}
       <p className="prose-measure mb-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300">
-        <span className="font-semibold text-slate-900 dark:text-white">Scenario: </span>
+        <strong>Scenario: </strong>
         {item.context}
       </p>
 

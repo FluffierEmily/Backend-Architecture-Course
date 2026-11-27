@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { ALL_PRACTICE_PROJECTS, ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
+import { ArchitectureIcon, ARCHITECTURE_VISUALS } from './ArchitectureIcon';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import type { ThemeMode } from '../hooks/useTheme';
 import type { ReadingPrefs } from '../hooks/useReadingPrefs';
@@ -246,11 +247,23 @@ export function Layout({
                     className={navLinkClass}
                     onClick={closeSidebarNow}
                   >
-                    <span className="truncate">
-                      {mod.order}. {mod.shortName}
-                    </span>
-                    {progress.completedSections.includes(mod.id) && (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    {({ isActive }) => (
+                      <>
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <ArchitectureIcon
+                            architectureId={mod.id}
+                            className={`h-4 w-4 ${
+                              isActive ? 'text-white' : ARCHITECTURE_VISUALS[mod.id].iconColor
+                            }`}
+                          />
+                          <span className="truncate">
+                            {mod.order}. {mod.shortName}
+                          </span>
+                        </span>
+                        {progress.completedSections.includes(mod.id) && (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                        )}
+                      </>
                     )}
                   </NavLink>
                 ))}

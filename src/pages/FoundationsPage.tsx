@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FoundationsPlayground } from '../components/FoundationsPlayground';
+import { ArchitectureIcon } from '../components/ArchitectureIcon';
 import { BEGINNER_GLOSSARY } from '../data';
 import { usePersistedState } from '../hooks/usePersistedState';
 
@@ -186,6 +187,7 @@ export function FoundationsPage({ isCompleted, onMarkComplete }: FoundationsPage
             onClick={onMarkComplete}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
           >
+            <ArchitectureIcon architectureId="modular-monolith" className="h-4 w-4" />
             Next: 1. Modular Monolith
             <ArrowRight className="h-4 w-4" />
           </Link>

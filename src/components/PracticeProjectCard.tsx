@@ -10,6 +10,7 @@ import {
 import type { PracticeProject } from '../types/course';
 import { ARCHITECTURE_BY_ID } from '../data';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { ArchitectureIcon, ARCHITECTURE_VISUALS } from './ArchitectureIcon';
 
 interface PracticeProjectCardProps {
   project: PracticeProject;
@@ -105,8 +106,13 @@ export function PracticeProjectCard({
             {project.difficulty === 'starter' ? 'Starter Project' : 'Stretch Project'}
           </span>
           {showArchitectureBadge && (
-            <span className="text-slate-400 dark:text-slate-500">
-              · {getArchitectureLabel(project.architectureId, true)}
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                ARCHITECTURE_VISUALS[project.architectureId].pillClass
+              }`}
+            >
+              <ArchitectureIcon architectureId={project.architectureId} className="h-3 w-3" />
+              {getArchitectureLabel(project.architectureId, true)}
             </span>
           )}
           <span className="text-slate-400 dark:text-slate-500">· {project.estimatedTime}</span>

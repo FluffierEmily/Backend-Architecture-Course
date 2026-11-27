@@ -29,6 +29,7 @@ import { ARCHITECTURE_BY_ID, FOUNDATION_BLOCKS } from '../data';
 import type { FoundationBlock } from '../types/course';
 import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
 import { FoundationDiagram, hasFoundationDiagram } from './FoundationDiagram';
+import { ArchitectureIcon } from './ArchitectureIcon';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 const BLOCK_ICONS: Record<FoundationBlock['icon'], typeof Globe> = {
@@ -257,8 +258,9 @@ export function FoundationsPlayground({
                   <Link
                     key={archId}
                     to={`/modules/${archId}`}
-                    className="font-medium text-slate-700 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 font-medium text-slate-700 transition hover:border-indigo-400/60 hover:text-indigo-600 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300 dark:hover:border-indigo-400/50 dark:hover:text-indigo-300"
                   >
+                    <ArchitectureIcon architectureId={archId} className="h-3.5 w-3.5" colored />
                     {mod.shortName}
                   </Link>
                 );

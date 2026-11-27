@@ -17,6 +17,11 @@ import {
 import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId, SimulatorOutcome } from '../types/course';
 import { readUiState, usePersistedState, writeUiState } from '../hooks/usePersistedState';
+import {
+  ArchitectureIcon,
+  ArchitectureIconBadge,
+  ARCHITECTURE_VISUALS,
+} from './ArchitectureIcon';
 
 interface DecisionSimulatorProps {
   completedChoices: Record<string, ArchitectureId>;
@@ -273,22 +278,26 @@ export function DecisionSimulator({
           <div className="grid gap-3 sm:grid-cols-2">
             {ARCHITECTURE_MODULES.map((arch) => {
               const isPicked = selectedArch === arch.id;
+              const visual = ARCHITECTURE_VISUALS[arch.id];
               return (
                 <button
                   key={arch.id}
                   type="button"
                   onClick={() => setSelectedArch(arch.id)}
-                  className={`flex flex-col rounded-xl border p-4 text-left transition ${
+                  className={`flex items-start gap-3 rounded-xl border p-4 text-left transition ${
                     isPicked
-                      ? 'border-indigo-500 bg-indigo-500/[0.08] ring-1 ring-indigo-500/40'
-                      : 'border-stone-200 bg-stone-50 hover:border-stone-300 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:hover:border-slate-600'
+                      ? `${visual.activeBorder} ${visual.activeBg} ring-1 ring-indigo-500/30`
+                      : `border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70 ${visual.hoverBorder}`
                   }`}
                 >
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">
-                    {arch.shortName}
-                  </span>
-                  <span className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
-                    {arch.tagline}
+                  <ArchitectureIconBadge architectureId={arch.id} size="sm" className="mt-0.5" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">
+                      {arch.shortName}
+                    </span>
+                    <span className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+                      {arch.tagline}
+                    </span>
                   </span>
                 </button>
               );
@@ -326,8 +335,9 @@ export function DecisionSimulator({
           className={`rounded-2xl border border-l-4 border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033] ${VERDICT_STYLES[outcome.verdict].accent}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              6-Month Outcome · {ARCHITECTURE_BY_ID[simulatedArch].name}
+            <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <ArchitectureIcon architectureId={simulatedArch} className="h-4 w-4" colored />
+              <span>6-Month Outcome · {ARCHITECTURE_BY_ID[simulatedArch].name}</span>
             </span>
             <span
               className={`rounded-full px-3 py-1 text-xs font-bold ${VERDICT_STYLES[outcome.verdict].badge}`}
@@ -419,17 +429,24 @@ export function DecisionSimulator({
               </div>
 
               {simulatedArch !== scenario.bestFit && (
-                <p className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-3.5 text-xs leading-5 text-emerald-900 dark:text-emerald-200">
-                  <strong>Recommended Best Fit:</strong> {bestFitModule.name} —{' '}
-                  {bestFitOutcome.headline}
+                <p className="mt-5 flex items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-3.5 text-xs leading-5 text-emerald-900 dark:text-emerald-200">
+                  <ArchitectureIcon
+                    architectureId={scenario.bestFit}
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    colored
+                  />
+                  <span>
+                    <strong className="text-emerald-700 dark:text-emerald-300">
+                      Recommended Best Fit:
+                    </strong>{' '}
+                    {bestFitModule.name} — {bestFitOutcome.headline}
+                  </span>
                 </p>
               )}
 
               {scenario.hybridNote && (
                 <p className="mt-3 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.08] p-3.5 text-xs leading-5 text-slate-800 dark:text-slate-100">
-                  <strong className="text-indigo-700 dark:text-indigo-300">
-                    Pragmatic Hybrid Pairing:{' '}
-                  </strong>
+                  <strong>Pragmatic Hybrid Pairing: </strong>
                   {scenario.hybridNote}
                 </p>
               )}
@@ -464,7 +481,8 @@ export function DecisionSimulator({
                       className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        <span className="inline-flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+                          <ArchitectureIcon architectureId={arch.id} className="h-4 w-4" colored />
                           {arch.shortName}
                         </span>
                         <span

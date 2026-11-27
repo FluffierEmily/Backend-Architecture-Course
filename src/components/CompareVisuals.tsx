@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ArchitectureIcon, ArchitectureIconGlyph } from './ArchitectureIcon';
 
 export function ArchitectureDecisionFlowchart() {
   return (
@@ -32,8 +33,11 @@ export function ArchitectureDecisionFlowchart() {
           <line x1="230" y1="45" x2="496" y2="45" stroke="#38bdf8" strokeWidth="2" />
           <text x="360" y="38" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#7dd3fc">YES →</text>
           <rect x="500" y="22" width="236" height="46" rx="10" fill="#0c4a6e" stroke="#38bdf8" strokeWidth="1.6" />
-          <text x="618" y="43" textAnchor="middle" fontSize="12" fontWeight="800" fill="#f0f9ff">Microservices</text>
-          <text x="618" y="58" textAnchor="middle" fontSize="9.5" fill="#bae6fd">Squad autonomy + isolated DBs</text>
+          <g transform="translate(514, 35) scale(0.83)">
+            <ArchitectureIconGlyph architectureId="microservices" color="#7dd3fc" />
+          </g>
+          <text x="628" y="43" textAnchor="middle" fontSize="12" fontWeight="800" fill="#f0f9ff">Microservices</text>
+          <text x="628" y="58" textAnchor="middle" fontSize="9.5" fill="#bae6fd">Squad autonomy + isolated DBs</text>
 
           {/* Q1 NO -> Q2 */}
           <line x1="125" y1="70" x2="125" y2="96" stroke="#64748b" strokeWidth="1.8" />
@@ -52,8 +56,11 @@ export function ArchitectureDecisionFlowchart() {
           <line x1="230" y1="123" x2="496" y2="123" stroke="#f59e0b" strokeWidth="2" />
           <text x="360" y="116" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#fcd34d">YES →</text>
           <rect x="500" y="100" width="236" height="46" rx="10" fill="#451a03" stroke="#f59e0b" strokeWidth="1.6" />
-          <text x="618" y="121" textAnchor="middle" fontSize="12" fontWeight="800" fill="#fef3c7">Serverless</text>
-          <text x="618" y="136" textAnchor="middle" fontSize="9.5" fill="#fcd34d">Scale-to-zero + instant bursts</text>
+          <g transform="translate(514, 113) scale(0.83)">
+            <ArchitectureIconGlyph architectureId="serverless" color="#fcd34d" />
+          </g>
+          <text x="628" y="121" textAnchor="middle" fontSize="12" fontWeight="800" fill="#fef3c7">Serverless</text>
+          <text x="628" y="136" textAnchor="middle" fontSize="9.5" fill="#fcd34d">Scale-to-zero + instant bursts</text>
 
           {/* Q2 NO -> Q3 */}
           <line x1="125" y1="148" x2="125" y2="174" stroke="#64748b" strokeWidth="1.8" />
@@ -72,7 +79,10 @@ export function ArchitectureDecisionFlowchart() {
           <line x1="230" y1="191" x2="496" y2="191" stroke="#10b981" strokeWidth="2" />
           <text x="360" y="185" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#6ee7b7">YES →</text>
           <rect x="500" y="168" width="236" height="38" rx="9" fill="#064e3b" stroke="#10b981" strokeWidth="1.6" />
-          <text x="618" y="191" textAnchor="middle" fontSize="11.5" fontWeight="800" fill="#ecfdf5">
+          <g transform="translate(514, 178) scale(0.75)">
+            <ArchitectureIconGlyph architectureId="event-driven" color="#6ee7b7" />
+          </g>
+          <text x="628" y="191" textAnchor="middle" fontSize="11.5" fontWeight="800" fill="#ecfdf5">
             Event-Driven (EDA)
           </text>
 
@@ -80,7 +90,10 @@ export function ArchitectureDecisionFlowchart() {
           <line x1="230" y1="218" x2="496" y2="226" stroke="#818cf8" strokeWidth="2.2" />
           <text x="360" y="236" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#a5b4fc">NO (Best Default) →</text>
           <rect x="500" y="210" width="236" height="34" rx="9" fill="#1e1b4b" stroke="#818cf8" strokeWidth="1.8" />
-          <text x="618" y="231" textAnchor="middle" fontSize="11.5" fontWeight="800" fill="#e0e7ff">
+          <g transform="translate(514, 218.5) scale(0.71)">
+            <ArchitectureIconGlyph architectureId="modular-monolith" color="#a5b4fc" />
+          </g>
+          <text x="628" y="231" textAnchor="middle" fontSize="11.5" fontWeight="800" fill="#e0e7ff">
             Modular Monolith (Start Here)
           </text>
         </svg>
@@ -88,19 +101,35 @@ export function ArchitectureDecisionFlowchart() {
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
         <span>Jump to module:</span>
-        <Link to="/modules/modular-monolith" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+        <Link
+          to="/modules/modular-monolith"
+          className="inline-flex items-center gap-1.5 font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+        >
+          <ArchitectureIcon architectureId="modular-monolith" className="h-3.5 w-3.5" />
           Modular Monolith
         </Link>
         <span>·</span>
-        <Link to="/modules/microservices" className="font-semibold text-sky-600 hover:underline dark:text-sky-300">
+        <Link
+          to="/modules/microservices"
+          className="inline-flex items-center gap-1.5 font-semibold text-sky-600 hover:underline dark:text-sky-300"
+        >
+          <ArchitectureIcon architectureId="microservices" className="h-3.5 w-3.5" />
           Microservices
         </Link>
         <span>·</span>
-        <Link to="/modules/serverless" className="font-semibold text-amber-600 hover:underline dark:text-amber-300">
+        <Link
+          to="/modules/serverless"
+          className="inline-flex items-center gap-1.5 font-semibold text-amber-600 hover:underline dark:text-amber-300"
+        >
+          <ArchitectureIcon architectureId="serverless" className="h-3.5 w-3.5" />
           Serverless
         </Link>
         <span>·</span>
-        <Link to="/modules/event-driven" className="font-semibold text-emerald-600 hover:underline dark:text-emerald-300">
+        <Link
+          to="/modules/event-driven"
+          className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 hover:underline dark:text-emerald-300"
+        >
+          <ArchitectureIcon architectureId="event-driven" className="h-3.5 w-3.5" />
           Event-Driven
         </Link>
       </div>

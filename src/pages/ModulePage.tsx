@@ -16,6 +16,11 @@ import {
 import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES } from '../data';
 import type { ArchitectureId, ArchitectureModule } from '../types/course';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
+import {
+  ArchitectureIcon,
+  ArchitectureIconBadge,
+  ARCHITECTURE_VISUALS,
+} from '../components/ArchitectureIcon';
 import { CodeComparison } from '../components/CodeComparison';
 import { MiniDecisionCheck } from '../components/MiniDecisionCheck';
 import { PatternDiagram, hasPatternDiagram } from '../components/PatternDiagram';
@@ -129,33 +134,39 @@ function ModulePageContent({
 
   const activeConcept = mod.deepDiveConcepts[conceptIdx] ?? mod.deepDiveConcepts[0];
   const activeCodeItem = mod.codeComparisons[codeIdx] ?? mod.codeComparisons[0];
+  const visual = ARCHITECTURE_VISUALS[mod.id];
 
   return (
     <div className="space-y-8">
       {/* Calm Header matching Foundations */}
       <header className="space-y-5">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-            <span>
-              Module {mod.order} of {ARCHITECTURE_MODULES.length}
-            </span>
-            {viewMode === 'guided' && (
-              <span className="text-slate-400 dark:text-slate-500">
-                · Step {stepIdx + 1} of {MODULE_STEPS.length}
+        <div className="flex items-start gap-4">
+          <ArchitectureIconBadge architectureId={mod.id} size="lg" className="mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <div
+              className={`flex flex-wrap items-center gap-2 text-xs font-semibold ${visual.eyebrowColor}`}
+            >
+              <span>
+                Module {mod.order} of {ARCHITECTURE_MODULES.length}
               </span>
-            )}
-            {isCompleted && (
-              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                · <CheckCircle2 className="h-3.5 w-3.5" /> Completed
-              </span>
-            )}
+              {viewMode === 'guided' && (
+                <span className="text-slate-400 dark:text-slate-500">
+                  · Step {stepIdx + 1} of {MODULE_STEPS.length}
+                </span>
+              )}
+              {isCompleted && (
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  · <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+                </span>
+              )}
+            </div>
+            <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              {mod.name}
+            </h1>
+            <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
+              {mod.tagline}
+            </p>
           </div>
-          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            {mod.name}
-          </h1>
-          <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
-            {mod.tagline}
-          </p>
         </div>
 
         {/* Single Quiet Underline Tab Bar + Subtle View Toggle */}
@@ -223,12 +234,8 @@ function ModulePageContent({
                 {mod.scenario.domain}
               </h2>
               <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <strong className="font-semibold text-slate-700 dark:text-slate-300">Team:</strong>{' '}
-                {mod.scenario.teamSize} &nbsp;·&nbsp;{' '}
-                <strong className="font-semibold text-slate-700 dark:text-slate-300">
-                  Traffic:
-                </strong>{' '}
-                {mod.scenario.trafficProfile}
+                <strong>Team:</strong> {mod.scenario.teamSize} &nbsp;·&nbsp;{' '}
+                <strong>Traffic:</strong> {mod.scenario.trafficProfile}
               </p>
 
               <p className="prose-measure mt-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
@@ -236,7 +243,7 @@ function ModulePageContent({
               </p>
 
               <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-7 text-slate-800 dark:text-slate-100">
-                <strong className="text-indigo-700 dark:text-indigo-300">Why this fits: </strong>
+                <strong>Why this fits: </strong>
                 {mod.scenario.whyThisArchitecture}
               </div>
             </div>
@@ -279,7 +286,12 @@ function ModulePageContent({
       {isVisible('diagram') && (
         <div className="space-y-8">
           <section id="diagram">
-            <ArchitectureDiagram key={mod.id} storageKey={mod.id} data={mod.diagram} />
+            <ArchitectureDiagram
+              key={mod.id}
+              storageKey={mod.id}
+              architectureId={mod.id}
+              data={mod.diagram}
+            />
           </section>
 
           <section id="concepts" className="space-y-4">
@@ -406,7 +418,7 @@ function ModulePageContent({
                 )}
 
                 <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-6 text-slate-800 dark:text-slate-100">
-                  <strong className="text-indigo-700 dark:text-indigo-300">Key Takeaway: </strong>
+                  <strong>Key Takeaway: </strong>
                   {activeConcept.keyTakeaway}
                 </div>
 
@@ -458,9 +470,7 @@ function ModulePageContent({
                     </div>
 
                     <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-3.5 text-sm leading-6 text-slate-800 dark:text-slate-100">
-                      <strong className="text-indigo-700 dark:text-indigo-300">
-                        Key Takeaway:{' '}
-                      </strong>
+                      <strong>Key Takeaway: </strong>
                       {concept.keyTakeaway}
                     </div>
                   </div>
@@ -627,11 +637,11 @@ function ModulePageContent({
                         {pf.title}
                       </h3>
                       <p className="prose-measure mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                        <strong className="text-slate-800 dark:text-slate-100">Red flag: </strong>
+                        <strong>Red flag: </strong>
                         {pf.symptom}
                       </p>
                       <p className="prose-measure mt-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3.5 py-2.5 text-sm leading-6 text-emerald-900 dark:text-emerald-200">
-                        <strong>Fix: </strong>
+                        <strong className="text-emerald-700 dark:text-emerald-300">Fix: </strong>
                         {pf.fix}
                       </p>
                     </div>
@@ -658,6 +668,7 @@ function ModulePageContent({
           <MiniDecisionCheck
             key={mod.id}
             storageKey={mod.id}
+            architectureId={mod.id}
             architectureName={mod.shortName}
             checks={mod.miniChecks}
             onCompleteCheck={onCompleteMiniCheck}
@@ -737,6 +748,7 @@ function ModulePageContent({
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
               >
                 <ArrowLeft className="h-4 w-4" />
+                <ArchitectureIcon architectureId={prevMod.id} className="h-4 w-4" colored />
                 {prevMod.order}. {prevMod.shortName}
               </Link>
             ) : (
@@ -770,6 +782,7 @@ function ModulePageContent({
                 onClick={() => onMarkSectionComplete(mod.id)}
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
               >
+                <ArchitectureIcon architectureId={nextMod.id} className="h-4 w-4" />
                 Next: {nextMod.order}. {nextMod.shortName}
                 <ArrowRight className="h-4 w-4" />
               </Link>

@@ -260,7 +260,7 @@ export function CircuitBreakerLab() {
       </div>
 
       <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-xs leading-6 text-slate-700 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-200">
-        <strong className="text-slate-900 dark:text-white">Latest Request Log: </strong>
+        <strong>Latest Request Log: </strong>
         {lastEvent}
       </div>
     </div>

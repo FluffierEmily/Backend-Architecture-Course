@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
-import type { MiniDecisionCheckItem } from '../types/course';
+import type { ArchitectureId, MiniDecisionCheckItem } from '../types/course';
 import { ARCHITECTURE_BY_ID } from '../data';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { ArchitectureIcon } from './ArchitectureIcon';
 
 interface MiniDecisionCheckProps {
   storageKey?: string;
+  architectureId?: ArchitectureId;
   architectureName: string;
   checks: MiniDecisionCheckItem[];
   onCompleteCheck?: (checkId: string) => void;
@@ -20,6 +22,7 @@ const isAnswerRecord = (v: unknown): v is Record<string, boolean> =>
 
 export function MiniDecisionCheck({
   storageKey = 'default',
+  architectureId,
   architectureName,
   checks,
   onCompleteCheck,
@@ -76,12 +79,19 @@ export function MiniDecisionCheck({
           <button
             type="button"
             onClick={() => handleAnswer(check.id, true)}
-            className={`rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
               hasAnswered && userChoice === true
                 ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
                 : 'border-stone-200 bg-stone-50 text-slate-700 hover:bg-stone-100 dark:border-slate-700 dark:bg-[#0f172a] dark:text-slate-200 dark:hover:bg-slate-800'
             }`}
           >
+            {architectureId && (
+              <ArchitectureIcon
+                architectureId={architectureId}
+                className="h-3.5 w-3.5"
+                colored={!(hasAnswered && userChoice === true)}
+              />
+            )}
             Good fit for {architectureName}
           </button>
           <button
@@ -125,8 +135,9 @@ export function MiniDecisionCheck({
               {betterArch ? (
                 <Link
                   to={`/modules/${betterArch.id}`}
-                  className="text-xs font-semibold text-indigo-600 underline decoration-indigo-500/40 underline-offset-4 hover:text-indigo-500 dark:text-indigo-300"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 underline decoration-indigo-500/40 underline-offset-4 hover:text-indigo-500 dark:text-indigo-300"
                 >
+                  <ArchitectureIcon architectureId={betterArch.id} className="h-3.5 w-3.5" colored />
                   Explore {betterArch.name} →
                 </Link>
               ) : (

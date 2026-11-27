@@ -5,6 +5,7 @@ import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureDecisionFlowchart, StranglerFigDiagram } from '../components/CompareVisuals';
+import { ArchitectureIconBadge } from '../components/ArchitectureIcon';
 
 interface PriorityFilter {
   id: string;
@@ -380,9 +381,10 @@ export function ComparePage() {
                       >
                         <Link
                           to={`/modules/${mod.id}`}
-                          className="text-sm font-extrabold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
+                          className="inline-flex items-center gap-2 text-sm font-extrabold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
                         >
-                          {mod.shortName}
+                          <ArchitectureIconBadge architectureId={mod.id} size="xs" />
+                          <span>{mod.shortName}</span>
                         </Link>
                         {isHighlighted && (
                           <span className="mt-1 block text-[11px] font-bold text-indigo-600 dark:text-indigo-300">
@@ -447,30 +449,40 @@ export function ComparePage() {
 
           {/* Common Hybrid Combos */}
           <div className="grid gap-4 md:grid-cols-3">
-            {[
-              {
-                title: 'Modular Monolith + Serverless Workers',
-                pattern: 'Startup Sweet Spot',
-                detail:
-                  'Keep core auth, users, and billing in one clean Modular Monolith, while offloading spiky PDF exports, image thumbnails, and webhook handlers to Serverless functions.',
-              },
-              {
-                title: 'Modular Monolith + Persistent Job Queue',
-                pattern: 'Durable Async Without Microservices',
-                detail:
-                  'Add Redis (BullMQ) or Postgres (pg-boss) so one codebase runs both fast HTTP handlers and crash-safe background email/report workers.',
-              },
-              {
-                title: 'Microservices + Event-Driven Backbone',
-                pattern: 'Large-Scale Standard',
-                detail:
-                  'Use synchronous HTTP/gRPC for user-facing reads (Search, Checkout), and publish domain events to Kafka/RabbitMQ so Billing, Analytics, and Notifications react without tight coupling.',
-              },
-            ].map((combo) => (
+            {(
+              [
+                {
+                  architectures: ['modular-monolith', 'serverless'] as const,
+                  title: 'Modular Monolith + Serverless Workers',
+                  pattern: 'Startup Sweet Spot',
+                  detail:
+                    'Keep core auth, users, and billing in one clean Modular Monolith, while offloading spiky PDF exports, image thumbnails, and webhook handlers to Serverless functions.',
+                },
+                {
+                  architectures: ['modular-monolith', 'event-driven'] as const,
+                  title: 'Modular Monolith + Persistent Job Queue',
+                  pattern: 'Durable Async Without Microservices',
+                  detail:
+                    'Add Redis (BullMQ) or Postgres (pg-boss) so one codebase runs both fast HTTP handlers and crash-safe background email/report workers.',
+                },
+                {
+                  architectures: ['microservices', 'event-driven'] as const,
+                  title: 'Microservices + Event-Driven Backbone',
+                  pattern: 'Large-Scale Standard',
+                  detail:
+                    'Use synchronous HTTP/gRPC for user-facing reads (Search, Checkout), and publish domain events to Kafka/RabbitMQ so Billing, Analytics, and Notifications react without tight coupling.',
+                },
+              ]
+            ).map((combo) => (
               <div
                 key={combo.title}
                 className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]"
               >
+                <div className="mb-3 flex items-center gap-2">
+                  <ArchitectureIconBadge architectureId={combo.architectures[0]} size="sm" />
+                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500">+</span>
+                  <ArchitectureIconBadge architectureId={combo.architectures[1]} size="sm" />
+                </div>
                 <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                   {combo.pattern}
                 </p>
@@ -486,13 +498,16 @@ export function ComparePage() {
 
           {/* Strangler Fig Pattern Card */}
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-7 dark:border-slate-700/80 dark:bg-[#162033]">
-            <div>
-              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                Evolutionary Migration · Avoid 9-Month Feature Freezes
-              </p>
-              <h3 className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">
-                The Strangler Fig Pattern (Instead of a Big-Bang Rewrite)
-              </h3>
+            <div className="flex items-start gap-3">
+              <ArchitectureIconBadge architectureId="hybrid" size="md" className="mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  Evolutionary Migration · Avoid 9-Month Feature Freezes
+                </p>
+                <h3 className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">
+                  The Strangler Fig Pattern (Instead of a Big-Bang Rewrite)
+                </h3>
+              </div>
             </div>
 
             <StranglerFigDiagram />
@@ -622,12 +637,13 @@ export function ComparePage() {
                   key={item.id}
                   className="rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
                 >
-                  <div className="flex items-baseline justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <Link
                       to={`/modules/${item.id}`}
-                      className="text-sm font-bold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
+                      className="inline-flex items-center gap-2.5 text-sm font-bold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
                     >
-                      {item.name}
+                      <ArchitectureIconBadge architectureId={item.id} size="sm" />
+                      <span>{item.name}</span>
                     </Link>
                     <span
                       className={`font-mono text-sm font-extrabold ${
@@ -642,7 +658,7 @@ export function ComparePage() {
                     </span>
                   </div>
                   <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Main driver: {item.opsDriver}
+                    <strong>Main driver:</strong> {item.opsDriver}
                   </p>
                   <p className="mt-2.5 text-sm leading-6 text-slate-700 dark:text-slate-200">
                     {item.note}
@@ -652,7 +668,7 @@ export function ComparePage() {
             </div>
 
             <div className="mt-6 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-7 text-slate-800 dark:text-slate-100">
-              <strong className="text-indigo-700 dark:text-indigo-300">Key Takeaway: </strong>
+              <strong>Key Takeaway: </strong>
               {activeCostTier.takeaway}
             </div>
           </div>
@@ -801,9 +817,7 @@ export function ComparePage() {
                 </div>
 
                 <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-3.5 text-xs leading-6 text-slate-800 dark:text-slate-100">
-                  <strong className="text-indigo-700 dark:text-indigo-300">
-                    Architecture Intuition:{' '}
-                  </strong>
+                  <strong>Architecture Intuition: </strong>
                   {sizingVerdict}
                 </div>
               </div>
@@ -821,7 +835,7 @@ export function ComparePage() {
                   Lightweight Architecture Decision Record (ADR) Template
                 </h2>
                 <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Document *why* you chose an architecture — and define explicit revisit triggers so
+                  Document <strong>why</strong> you chose an architecture — and define explicit revisit triggers so
                   future engineers know when to evolve it.
                 </p>
               </div>

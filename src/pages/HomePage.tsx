@@ -8,13 +8,24 @@ import {
   SIMULATOR_SCENARIOS,
 } from '../data';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
+import type { ArchitectureId } from '../types/course';
+import {
+  ArchitectureIcon,
+  ArchitectureIconBadge,
+  ARCHITECTURE_VISUALS,
+} from '../components/ArchitectureIcon';
 
 interface HomePageProps {
   progress: CourseProgressState;
   overallPercent: number;
 }
 
-function getNextRecommendedStep(progress: CourseProgressState) {
+function getNextRecommendedStep(progress: CourseProgressState): {
+  label: string;
+  to: string;
+  note: string;
+  architectureId?: ArchitectureId;
+} {
   if (!progress.completedSections.includes('foundations')) {
     return {
       label: 'Start with Foundations',
@@ -31,6 +42,7 @@ function getNextRecommendedStep(progress: CourseProgressState) {
       label: `Continue: ${nextMod.order}. ${nextMod.shortName}`,
       to: `/modules/${nextMod.id}`,
       note: `Up next · ${nextMod.scenario.company} (${nextMod.scenario.domain})`,
+      architectureId: nextMod.id,
     };
   }
 
@@ -58,7 +70,10 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
         <p className="prose-measure mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
           Master <strong>Modular Monoliths</strong>, <strong>Microservices</strong>,{' '}
           <strong>Serverless</strong>, and <strong>Event-Driven Architecture</strong> one calm chunk
-          at a time — with visual flow diagrams, highlighted <em>Problematic vs. Refactored</em>{' '}
+          at a time — with visual flow diagrams, highlighted{' '}
+          <em className="font-medium text-slate-900 dark:text-slate-100">
+            Problematic vs. Refactored
+          </em>{' '}
           TypeScript examples, and a Decision Simulator.
         </p>
 
@@ -68,6 +83,9 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
             to={nextStep.to}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
           >
+            {nextStep.architectureId && (
+              <ArchitectureIcon architectureId={nextStep.architectureId} className="h-4 w-4" />
+            )}
             {nextStep.label}
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -135,29 +153,33 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
         <div className="grid gap-4 md:grid-cols-2">
           {ARCHITECTURE_MODULES.map((mod) => {
             const isDone = progress.completedSections.includes(mod.id);
+            const visual = ARCHITECTURE_VISUALS[mod.id];
             return (
               <Link
                 key={mod.id}
                 to={`/modules/${mod.id}`}
-                className="group flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-6 shadow-xs transition hover:border-indigo-500/50 dark:border-slate-700/80 dark:bg-[#162033] dark:hover:border-indigo-400/50"
+                className={`group flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-6 shadow-xs transition dark:border-slate-700/80 dark:bg-[#162033] ${visual.hoverBorder}`}
               >
-                <div>
-                  <div className="flex items-center justify-between gap-2 text-xs font-semibold">
-                    <span className="text-indigo-600 dark:text-indigo-400">
-                      Module {mod.order} · {mod.scenario.company}
-                    </span>
-                    {isDone && (
-                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Done
+                <div className="flex items-start gap-4">
+                  <ArchitectureIconBadge architectureId={mod.id} size="md" className="mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                      <span className={visual.eyebrowColor}>
+                        Module {mod.order} · {mod.scenario.company}
                       </span>
-                    )}
+                      {isDone && (
+                        <span className="inline-flex shrink-0 items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Done
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-1.5 text-lg font-extrabold text-slate-900 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
+                      {mod.name}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                      {mod.tagline}
+                    </p>
                   </div>
-                  <h3 className="mt-2 text-lg font-extrabold text-slate-900 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
-                    {mod.name}
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-400">
-                    {mod.tagline}
-                  </p>
                 </div>
 
                 <div className="mt-5 flex items-center justify-between border-t border-stone-100 pt-3.5 text-xs font-medium text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
