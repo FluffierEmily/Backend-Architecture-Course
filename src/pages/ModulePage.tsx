@@ -18,6 +18,7 @@ import type { ArchitectureId, ArchitectureModule } from '../types/course';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
 import { CodeComparison } from '../components/CodeComparison';
 import { MiniDecisionCheck } from '../components/MiniDecisionCheck';
+import { PatternDiagram, hasPatternDiagram } from '../components/PatternDiagram';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -400,6 +401,10 @@ function ModulePageContent({
                   </ul>
                 )}
 
+                {hasPatternDiagram(activeConcept.id) && (
+                  <PatternDiagram conceptId={activeConcept.id} />
+                )}
+
                 <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-6 text-slate-800 dark:text-slate-100">
                   <strong className="text-indigo-700 dark:text-indigo-300">Key Takeaway: </strong>
                   {activeConcept.keyTakeaway}
@@ -445,6 +450,10 @@ function ModulePageContent({
                             </li>
                           ))}
                         </ul>
+                      )}
+
+                      {hasPatternDiagram(concept.id) && (
+                        <PatternDiagram conceptId={concept.id} />
                       )}
                     </div>
 

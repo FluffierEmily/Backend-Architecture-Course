@@ -28,6 +28,7 @@ import {
 import { ARCHITECTURE_BY_ID, FOUNDATION_BLOCKS } from '../data';
 import type { FoundationBlock } from '../types/course';
 import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
+import { FoundationDiagram, hasFoundationDiagram } from './FoundationDiagram';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 const BLOCK_ICONS: Record<FoundationBlock['icon'], typeof Globe> = {
@@ -230,6 +231,10 @@ export function FoundationsPlayground({
                 {activeBlock.howItWorks}
               </p>
             </div>
+
+            {hasFoundationDiagram(activeBlock.id) && (
+              <FoundationDiagram blockId={activeBlock.id} />
+            )}
 
             <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-4 sm:p-5">
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">

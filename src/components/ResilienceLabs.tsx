@@ -105,44 +105,118 @@ export function CircuitBreakerLab() {
         </span>
       </div>
 
-      {/* State Track */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {(
-          [
-            {
-              id: 'closed',
-              title: '1. CLOSED',
-              desc: 'Normal traffic flows. Tracks consecutive timeouts/5xx errors.',
-            },
-            {
-              id: 'open',
-              title: '2. OPEN',
-              desc: 'Skips the failing service completely and serves a cached fallback in 5ms.',
-            },
-            {
-              id: 'half-open',
-              title: '3. HALF-OPEN',
-              desc: 'Lets one probe request through after cooldown to check if the service recovered.',
-            },
-          ] as const
-        ).map((step) => {
-          const isActive = state === step.id;
-          return (
-            <div
-              key={step.id}
-              className={`rounded-xl border p-4 transition ${
-                isActive
-                  ? 'border-indigo-500 bg-indigo-500/[0.08] ring-1 ring-indigo-500/30'
-                  : 'border-stone-200 bg-stone-50 opacity-65 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
-              }`}
-            >
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white">{step.title}</p>
-              <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                {step.desc}
-              </p>
-            </div>
-          );
-        })}
+      {/* Live State-Machine SVG Diagram */}
+      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3.5">
+        <svg
+          viewBox="0 0 720 175"
+          className="h-auto w-full min-w-[500px]"
+          role="img"
+          aria-label="Live Circuit Breaker state machine diagram showing Closed, Open, and Half-Open transitions"
+        >
+          {/* Transition: CLOSED -> OPEN */}
+          <path
+            d="M 192 78 C 235 32, 265 32, 290 74"
+            fill="none"
+            stroke={state === 'open' ? '#f43f5e' : '#475569'}
+            strokeWidth={state === 'open' ? 2.6 : 1.6}
+            strokeDasharray="6 5"
+            className={state === 'open' ? 'animate-flow-fast' : undefined}
+          />
+          <text x="242" y="34" textAnchor="middle" fontSize="9.5" fontWeight="700" fill={state === 'open' ? '#fda4af' : '#94a3b8'}>
+            3 failures →
+          </text>
+
+          {/* Transition: OPEN -> HALF-OPEN */}
+          <path
+            d="M 432 78 C 475 32, 505 32, 530 74"
+            fill="none"
+            stroke={state === 'half-open' ? '#f59e0b' : '#475569'}
+            strokeWidth={state === 'half-open' ? 2.6 : 1.6}
+            strokeDasharray="6 5"
+            className={state === 'half-open' ? 'animate-flow' : undefined}
+          />
+          <text x="482" y="34" textAnchor="middle" fontSize="9.5" fontWeight="700" fill={state === 'half-open' ? '#fcd34d' : '#94a3b8'}>
+            Cooldown expires →
+          </text>
+
+          {/* Transition: HALF-OPEN -> CLOSED (bottom arc) */}
+          <path
+            d="M 600 120 C 510 166, 210 166, 120 120"
+            fill="none"
+            stroke={state === 'closed' ? '#10b981' : '#334155'}
+            strokeWidth={state === 'closed' ? 2.2 : 1.5}
+            strokeDasharray="6 5"
+          />
+          <text x="360" y="164" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#6ee7b7">
+            ← Probe succeeds (Resume traffic)
+          </text>
+
+          {/* Transition: HALF-OPEN -> OPEN (probe fails) */}
+          <path
+            d="M 530 112 C 500 132, 465 132, 432 112"
+            fill="none"
+            stroke="#f43f5e"
+            strokeWidth="1.4"
+            strokeDasharray="4 4"
+          />
+          <text x="482" y="138" textAnchor="middle" fontSize="9" fill="#fda4af">
+            ← Probe fails
+          </text>
+
+          {/* Node 1: CLOSED */}
+          <rect
+            x="44"
+            y="62"
+            width="148"
+            height="56"
+            rx="12"
+            fill={state === 'closed' ? '#064e3b' : '#0f172a'}
+            stroke={state === 'closed' ? '#10b981' : '#334155'}
+            strokeWidth={state === 'closed' ? 2.6 : 1.4}
+          />
+          <text x="118" y="86" textAnchor="middle" fontSize="12" fontWeight="800" fill="#f8fafc">
+            1. CLOSED
+          </text>
+          <text x="118" y="104" textAnchor="middle" fontSize="9.5" fill={state === 'closed' ? '#6ee7b7' : '#94a3b8'}>
+            Normal (~45ms) · {consecutiveFailures}/{BREAKER_FAILURE_THRESHOLD} fails
+          </text>
+
+          {/* Node 2: OPEN */}
+          <rect
+            x="286"
+            y="62"
+            width="148"
+            height="56"
+            rx="12"
+            fill={state === 'open' ? '#4c0519' : '#0f172a'}
+            stroke={state === 'open' ? '#f43f5e' : '#334155'}
+            strokeWidth={state === 'open' ? 2.6 : 1.4}
+          />
+          <text x="360" y="86" textAnchor="middle" fontSize="12" fontWeight="800" fill="#f8fafc">
+            2. OPEN
+          </text>
+          <text x="360" y="104" textAnchor="middle" fontSize="9.5" fill={state === 'open' ? '#fda4af' : '#94a3b8'}>
+            Fail-Fast Fallback (5ms)
+          </text>
+
+          {/* Node 3: HALF-OPEN */}
+          <rect
+            x="528"
+            y="62"
+            width="148"
+            height="56"
+            rx="12"
+            fill={state === 'half-open' ? '#451a03' : '#0f172a'}
+            stroke={state === 'half-open' ? '#f59e0b' : '#334155'}
+            strokeWidth={state === 'half-open' ? 2.6 : 1.4}
+          />
+          <text x="602" y="86" textAnchor="middle" fontSize="12" fontWeight="800" fill="#f8fafc">
+            3. HALF-OPEN
+          </text>
+          <text x="602" y="104" textAnchor="middle" fontSize="9.5" fill={state === 'half-open' ? '#fcd34d' : '#94a3b8'}>
+            1 Probe Request
+          </text>
+        </svg>
       </div>
 
       {/* Controls */}
@@ -316,6 +390,84 @@ export function AvailabilityAndOutboxLab() {
               ? 'Reset Normal Execution'
               : 'Simulate Crash Right After DB Commit'}
           </button>
+        </div>
+
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3.5">
+          <svg
+            viewBox="0 0 720 155"
+            className="h-auto w-full min-w-[500px]"
+            role="img"
+            aria-label="Visual comparison of Dual-Write losing an event on crash versus Transactional Outbox preserving it atomically"
+          >
+            {/* Top: Dual-Write */}
+            <text x="16" y="22" fontSize="10.5" fontWeight="800" fill={crashInjected ? '#fda4af' : '#cbd5e1'}>
+              1. DUAL-WRITE (Two separate operations)
+            </text>
+            <rect x="16" y="32" width="118" height="36" rx="8" fill="#1e1b4b" stroke="#818cf8" strokeWidth="1.4" />
+            <text x="75" y="54" textAnchor="middle" fontSize="11" fontWeight="700" fill="#f8fafc">Trip Service</text>
+
+            <line x1="134" y1="50" x2="210" y2="50" stroke="#10b981" strokeWidth="2" />
+            <rect x="214" y="32" width="144" height="36" rx="8" fill="#312e81" stroke="#10b981" strokeWidth="1.4" />
+            <text x="286" y="54" textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#ecfdf5">DB Commit ✓</text>
+
+            <line
+              x1="358"
+              y1="50"
+              x2="490"
+              y2="50"
+              stroke={crashInjected ? '#f43f5e' : '#38bdf8'}
+              strokeWidth="2"
+              strokeDasharray="5 5"
+              className={crashInjected ? undefined : 'animate-flow'}
+            />
+            {crashInjected && (
+              <g>
+                <rect x="384" y="36" width="84" height="26" rx="6" fill="#4c0519" stroke="#f43f5e" strokeWidth="1.4" />
+                <text x="426" y="53" textAnchor="middle" fontSize="10" fontWeight="800" fill="#fda4af">✕ CRASH!</text>
+              </g>
+            )}
+
+            <rect
+              x="494"
+              y="32"
+              width="206"
+              height="36"
+              rx="8"
+              fill={crashInjected ? '#1f0a12' : '#064e3b'}
+              stroke={crashInjected ? '#f43f5e' : '#10b981'}
+              strokeWidth="1.4"
+            />
+            <text x="597" y="54" textAnchor="middle" fontSize="10.5" fontWeight="700" fill={crashInjected ? '#fda4af' : '#ecfdf5'}>
+              {crashInjected ? 'Broker: Event Lost Forever' : 'Broker: TripCompleted'}
+            </text>
+
+            {/* Bottom: Transactional Outbox */}
+            <text x="16" y="96" fontSize="10.5" fontWeight="800" fill="#6ee7b7">
+              2. TRANSACTIONAL OUTBOX (Atomic DB Write + Relay)
+            </text>
+            <rect x="16" y="106" width="118" height="36" rx="8" fill="#1e1b4b" stroke="#818cf8" strokeWidth="1.4" />
+            <text x="75" y="128" textAnchor="middle" fontSize="11" fontWeight="700" fill="#f8fafc">Trip Service</text>
+
+            <line x1="134" y1="124" x2="174" y2="124" stroke="#10b981" strokeWidth="2" />
+
+            <rect x="178" y="102" width="234" height="44" rx="10" fill="#052e16" stroke="#10b981" strokeWidth="1.8" />
+            <text x="295" y="120" textAnchor="middle" fontSize="10" fontWeight="800" fill="#6ee7b7">
+              1 Atomic SQL Transaction ✓
+            </text>
+            <text x="295" y="136" textAnchor="middle" fontSize="9.5" fill="#ecfdf5">
+              UPDATE trips + INSERT outbox_events
+            </text>
+
+            <line x1="412" y1="124" x2="490" y2="124" stroke="#10b981" strokeWidth="2" strokeDasharray="6 5" className="animate-flow" />
+            <text x="451" y="116" textAnchor="middle" fontSize="9" fontWeight="700" fill="#6ee7b7">
+              {crashInjected ? 'Relay recovers' : 'Relay / CDC'}
+            </text>
+
+            <rect x="494" y="106" width="206" height="36" rx="8" fill="#064e3b" stroke="#10b981" strokeWidth="1.6" />
+            <text x="597" y="128" textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#ecfdf5">
+              Broker: Guaranteed Delivery ✓
+            </text>
+          </svg>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">

@@ -195,4 +195,35 @@ describe('AppRoutes integration', () => {
     expect(screen.getByText(/strangler-capstone\//i)).toBeInTheDocument();
     projectsRefreshed.unmount();
   });
+
+  it('renders visual diagrams selectively where they aid understanding', () => {
+    // 1. Foundations: first block (client-http) stays clean without redundant SVG; caching renders its Cache-Aside diagram
+    const foundations = renderAt('/foundations');
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /block 1 of/i }));
+    fireEvent.click(screen.getByRole('button', { name: /7\. caching/i }));
+    expect(
+      screen.getByRole('img', { name: /cache-aside diagram showing cache hit and cache miss/i })
+    ).toBeInTheDocument();
+    foundations.unmount();
+
+    // 2. Microservices Step 2 shows Saga forward + compensating actions diagram
+    const ms = renderAt('/modules/microservices');
+    fireEvent.click(screen.getByRole('tab', { name: /2\. visual flow/i }));
+    expect(
+      screen.getByRole('img', { name: /saga workflow diagram showing reserve stock/i })
+    ).toBeInTheDocument();
+    ms.unmount();
+
+    // 3. Compare page shows Decision Flowchart (Step 1) and Strangler Fig diagram (Step 2)
+    const compare = renderAt('/compare');
+    expect(
+      screen.getByRole('img', { name: /decision flowchart showing when to choose/i })
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /2\. hybrids & strangler fig/i }));
+    expect(
+      screen.getByRole('img', { name: /three-stage strangler fig migration diagram/i })
+    ).toBeInTheDocument();
+    compare.unmount();
+  });
 });

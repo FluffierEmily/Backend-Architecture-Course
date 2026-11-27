@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Check, Compass, Copy } from 'lucide-react';
 import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { ArchitectureDecisionFlowchart, StranglerFigDiagram } from '../components/CompareVisuals';
 
 interface PriorityFilter {
   id: string;
@@ -423,6 +424,8 @@ export function ComparePage() {
               </tbody>
             </table>
           </div>
+
+          <ArchitectureDecisionFlowchart />
         </section>
       )}
 
@@ -491,6 +494,8 @@ export function ComparePage() {
                 The Strangler Fig Pattern (Instead of a Big-Bang Rewrite)
               </h3>
             </div>
+
+            <StranglerFigDiagram />
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               {[
