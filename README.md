@@ -2,6 +2,8 @@
 
 A beginner-friendly, browser-based interactive course for developers who want to understand, compare, and choose between four core backend architectures — with **zero local Docker/server setup** and **no blank-editor coding exams**.
 
+Live URL: https://backend-architecture-course.web.app/
+
 ## What’s Inside
 
 1. **Module 0 — Backend Foundations**
@@ -39,6 +41,55 @@ Open the local URL printed by Vite in your browser. Progress and theme preferenc
 | `npm run preview` | Preview the production build locally |
 | `npm run typecheck` | Run strict TypeScript checks (`tsc --noEmit`) |
 | `npm test -- --run` | Run automated unit, component, and content-integrity tests |
+| `npm run deploy` | Build the production bundle and deploy live to Firebase Hosting |
+| `npm run deploy:preview` | Build and deploy to a temporary Firebase Hosting preview channel |
+| `npm run firebase:emulate` | Build and test locally with the Firebase Hosting emulator (`http://localhost:5000`) |
+
+## Deploying to Firebase Hosting
+
+This project is preconfigured for [Firebase Hosting](https://firebase.google.com/docs/hosting) via `firebase.json` (serves Vite's `dist/` output with SPA rewrites to `/index.html` and immutable caching for `/assets/**`) and `.firebaserc` (targets the `backend-architecture-course` project).
+
+1. **Install and sign in to the Firebase CLI** (one-time setup):
+
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   ```
+
+2. **Configure local Firebase environment variables:**
+
+   Copy `.env.example` to `.env.local` (ignored by Git) and fill in your web app config from the Firebase Console:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Required keys:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_FIREBASE_MEASUREMENT_ID` *(optional, for Analytics)*
+
+3. **Test locally with the Firebase Hosting emulator (optional):**
+
+   ```bash
+   npm run firebase:emulate
+   ```
+
+   Serves the production build at `http://localhost:5000` with `firebase.json` rewrites and headers applied.
+
+4. **Deploy to a preview channel or production:**
+
+   ```bash
+   # Temporary preview URL (expires in 7 days by default)
+   npm run deploy:preview
+
+   # Live production site (backend-architecture-course.web.app)
+   npm run deploy
+   ```
 
 ## Project Structure
 
