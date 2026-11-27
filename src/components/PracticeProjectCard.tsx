@@ -17,8 +17,20 @@ interface PracticeProjectCardProps {
   showArchitectureBadge?: boolean;
 }
 
+function getArchitectureLabel(
+  architectureId: PracticeProject['architectureId'],
+  short = false
+): string {
+  if (architectureId === 'hybrid') {
+    return short ? 'Hybrid / Evolution' : 'Hybrid / Strangler Fig Evolution';
+  }
+  return short
+    ? ARCHITECTURE_BY_ID[architectureId].shortName
+    : ARCHITECTURE_BY_ID[architectureId].name;
+}
+
 function buildMarkdownBrief(project: PracticeProject): string {
-  const archName = ARCHITECTURE_BY_ID[project.architectureId].name;
+  const archName = getArchitectureLabel(project.architectureId);
   return [
     `# ${project.title}`,
     '',
@@ -86,7 +98,7 @@ export function PracticeProjectCard({
           </span>
           {showArchitectureBadge && (
             <span className="text-slate-400 dark:text-slate-500">
-              · {ARCHITECTURE_BY_ID[project.architectureId].shortName}
+              · {getArchitectureLabel(project.architectureId, true)}
             </span>
           )}
           <span className="text-slate-400 dark:text-slate-500">· {project.estimatedTime}</span>

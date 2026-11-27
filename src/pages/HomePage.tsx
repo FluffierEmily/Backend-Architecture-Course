@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, CheckCircle2, Compass, FolderGit2 } from 'lucide-react';
-import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
+import {
+  ALL_PRACTICE_PROJECTS,
+  ARCHITECTURE_MODULES,
+  BEGINNER_GLOSSARY,
+  FOUNDATION_BLOCKS,
+  SIMULATOR_SCENARIOS,
+} from '../data';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 
 interface HomePageProps {
@@ -79,7 +85,7 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
           >
             <FolderGit2 className="h-4 w-4" />
-            Browse 8 Practice Projects
+            Browse {ALL_PRACTICE_PROJECTS.length} Practice Projects
           </Link>
         </div>
 
@@ -114,10 +120,11 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
                 )}
               </div>
               <h3 className="mt-1 text-base font-bold text-slate-900 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
-                Backend Building Blocks: Gateways, Queues, Caching &amp; Backpressure
+                Backend Building Blocks: Gateways, Concurrency, Databases &amp; Resilience
               </h3>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Plain-English analogies, a Traffic Spike mini-lab, and a 10-term pocket glossary.
+                {FOUNDATION_BLOCKS.length} plain-English building blocks, 3 interactive resilience
+                labs, and a {BEGINNER_GLOSSARY.length}-term pocket glossary.
               </p>
             </div>
           </div>

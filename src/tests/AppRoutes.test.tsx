@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppRoutes } from '../App';
+import { ALL_PRACTICE_PROJECTS } from '../data';
 
 function renderAt(path: string) {
   return render(
@@ -24,22 +25,40 @@ describe('AppRoutes integration', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /start with foundations/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /try decision simulator/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /browse 8 practice projects/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: new RegExp(`browse ${ALL_PRACTICE_PROJECTS.length} practice projects`, 'i'),
+      })
+    ).toBeInTheDocument();
     expect(document.title).toBe('Interactive Backend Architectures Course');
   });
 
-  it('renders Foundations page with guided steps and toggles the Traffic Spike mini-lab', () => {
+  it('renders Foundations page with guided steps and interactive resilience labs', () => {
     renderAt('/foundations');
     expect(document.title).toBe('Foundations · Interactive Backend Architectures Course');
     expect(
       screen.getByRole('heading', { name: /backend architecture foundations/i })
     ).toBeInTheDocument();
 
-    // Navigate to Step 2 (Traffic Spike Lab)
-    fireEvent.click(screen.getByRole('tab', { name: /2\. traffic spike lab/i }));
+    // Navigate to Step 2 (Interactive Labs)
+    fireEvent.click(screen.getByRole('tab', { name: /2\. interactive labs/i }));
     fireEvent.click(screen.getByRole('button', { name: /trigger 10x flash spike/i }));
     expect(screen.getByText(/OVERLOADED \(503 Errors!\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Absorbing Spike Smoothly/i)).toBeInTheDocument();
+
+    // Switch to Circuit Breaker lab and trip it open
+    fireEvent.click(screen.getByRole('tab', { name: /lab 2 · circuit breaker states/i }));
+    const failBtn = screen.getByRole('button', { name: /inject downstream failure/i });
+    fireEvent.click(failBtn);
+    fireEvent.click(failBtn);
+    fireEvent.click(failBtn);
+    expect(screen.getByText(/OPEN \(Fail-Fast Fallback\)/i)).toBeInTheDocument();
+
+    // Switch to Availability & Outbox lab and simulate crash
+    fireEvent.click(screen.getByRole('tab', { name: /lab 3 · availability math/i }));
+    fireEvent.click(screen.getByRole('button', { name: /simulate crash right after db commit/i }));
+    expect(screen.getByText(/Event Lost!/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zero Loss!/i)).toBeInTheDocument();
   });
 
   it('renders all 4 architecture module pages with guided steps and All Sections mode', () => {
@@ -94,14 +113,37 @@ describe('AppRoutes integration', () => {
     expect(
       screen.getByRole('heading', { name: /the strangler fig pattern/i })
     ).toBeInTheDocument();
+    expect(screen.getByText(/splitting the shared database safely/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /3\. cost intuition/i }));
+    expect(
+      screen.getByRole('heading', { name: /cloud cost intuition/i })
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /10m req \/ mo/i }));
+    expect(screen.getByText(/\$120 – \$350 \/ mo/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /4\. sizing & adr kit/i }));
+    expect(
+      screen.getByRole('heading', { name: /5-minute back-of-the-envelope sizing estimator/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /lightweight architecture decision record \(adr\) template/i })
+    ).toBeInTheDocument();
   });
 
-  it('renders Practice Projects gallery, filters by difficulty, and toggles milestones', () => {
+  it('renders Practice Projects gallery, filters by difficulty and Hybrid tab, and toggles milestones', () => {
+    const totalMilestones = ALL_PRACTICE_PROJECTS.reduce((sum, p) => sum + p.milestones.length, 0);
     renderAt('/projects');
     expect(
       screen.getByRole('heading', { name: /practice projects gallery/i })
     ).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('tab', { name: /hybrid \/ evolution/i }));
+    expect(
+      screen.getByRole('heading', { name: /strangler fig capstone/i })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /^all \(/i }));
     fireEvent.click(screen.getByRole('button', { name: /^starter$/i }));
     expect(screen.getAllByText(/Starter Project/i).length).toBe(4);
     expect(screen.queryByText(/Stretch Project/i)).not.toBeInTheDocument();
@@ -110,6 +152,8 @@ describe('AppRoutes integration', () => {
       name: /set up the 3 domain module folders/i,
     });
     fireEvent.click(firstMilestone);
-    expect(screen.getByText(/1 \/ 25 Milestones Checked/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`1 / ${totalMilestones} Milestones Checked`, 'i'))
+    ).toBeInTheDocument();
   });
 });

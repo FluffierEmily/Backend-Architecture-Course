@@ -11,7 +11,7 @@ interface FoundationsPageProps {
 
 const FOUNDATION_STEPS = [
   { id: 'blocks', label: '1. Building Blocks' },
-  { id: 'lab', label: '2. Traffic Spike Lab' },
+  { id: 'lab', label: '2. Interactive Labs' },
   { id: 'glossary', label: '3. Quick Glossary' },
 ] as const;
 

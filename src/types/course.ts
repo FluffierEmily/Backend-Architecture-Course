@@ -4,6 +4,8 @@ export type ArchitectureId =
   | 'serverless'
   | 'event-driven';
 
+export type ProjectArchitectureId = ArchitectureId | 'hybrid';
+
 export interface CodeAnnotation {
   id: string;
   label: string;
@@ -90,7 +92,7 @@ export interface PracticeProjectMilestone {
 
 export interface PracticeProject {
   id: string;
-  architectureId: ArchitectureId;
+  architectureId: ProjectArchitectureId;
   title: string;
   difficulty: 'starter' | 'stretch';
   estimatedTime: string;
@@ -144,6 +146,7 @@ export interface ArchitectureModule {
     faultIsolation: 'Moderate' | 'High' | 'Very High';
     costAtIdle: 'Fixed (Low)' | 'Fixed (High)' | 'Near Zero' | 'Broker + Workers';
     dataConsistency: 'Strong (ACID)' | 'Eventual' | 'Per-Function / Mixed';
+    typicalDatastore: string;
     bestFor: string;
   };
 }
@@ -162,7 +165,14 @@ export interface FoundationBlock {
     | 'gauge'
     | 'activity'
     | 'lock'
-    | 'git-branch';
+    | 'git-branch'
+    | 'flask-conical'
+    | 'key-round'
+    | 'radio'
+    | 'hard-drive'
+    | 'rocket'
+    | 'building'
+    | 'heart-pulse';
   oneLiner: string;
   realWorldAnalogy: string;
   howItWorks: string;
@@ -200,5 +210,6 @@ export interface SimulatorScenario {
     timeToMarket: string;
   };
   bestFit: ArchitectureId;
+  hybridNote?: string;
   outcomes: Record<ArchitectureId, SimulatorOutcome>;
 }

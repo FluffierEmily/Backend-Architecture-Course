@@ -148,6 +148,19 @@ export const modularMonolithModule: ArchitectureModule = {
       keyTakeaway:
         'Automate boundary checks in CI and separate HTTP vs. worker processes — that single habit prevents 90% of monoliths from decaying into spaghetti.',
     },
+    {
+      id: 'mm-bounded-contexts',
+      badge: 'Domain Modeling',
+      title: 'How to Draw Clean Module Boundaries (Bounded Contexts)',
+      summary:
+        'Beginners often ask "where does one module end and another begin?" Group code by business capability and change frequency (Bounded Contexts) rather than splitting by database table.',
+      bulletPoints: [
+        'A "User" means credentials & MFA to Auth, a seat count & invoice contact to Billing, and an assignee name to Projects — let each module model only the fields it owns.',
+        'Cohesion heuristic: if two folders constantly change together in the same pull request, they belong inside the same module; if separate squads own different cadences (Conway’s Law), draw a boundary between them.',
+      ],
+      keyTakeaway:
+        'Draw module lines around independent business capabilities, not CRUD tables — cohesive boundaries keep cross-module calls rare and clean.',
+    },
   ],
   codeComparisons: [
     {
@@ -356,6 +369,73 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
         },
       ],
     },
+    {
+      id: 'mm-concurrency-race',
+      title: 'Read-Modify-Write Race Condition vs. Atomic Conditional Update',
+      subtitle: 'Checking state in JavaScript and updating SQL in two separate steps allows double-booking under concurrency.',
+      context:
+        'Two PulseBoard workspace admins simultaneously click "Claim Last Promo Seat" for the exact same seat pool.',
+      problemTitle: 'Pitfall: Checking seats in JS, then updating in a second query',
+      problemFile: 'src/modules/billing/claimPromoSeat.ts',
+      problemCode: `export async function claimPromoSeat(orgId: string, seatPoolId: string) {
+  // Read-Modify-Write Race: two concurrent users both see remaining = 1!
+  const pool = await db.queryOne(
+    'SELECT id, seats_remaining FROM seat_pools WHERE id = $1',
+    [seatPoolId]
+  );
+  if (!pool || pool.seats_remaining < 1) {
+    throw new Error('No seats left');
+  }
+
+  // Both requests decrement and succeed -> oversold (-1 seats)!
+  await db.query(
+    'UPDATE seat_pools SET seats_remaining = $1 WHERE id = $2',
+    [pool.seats_remaining - 1, seatPoolId]
+  );
+  return { claimed: true, orgId };
+}`,
+      refactoredTitle: 'Refactored: Single atomic conditional SQL update + tenant scope',
+      refactoredFile: 'src/modules/billing/claimPromoSeat.ts',
+      refactoredCode: `export async function claimPromoSeat(orgId: string, seatPoolId: string) {
+  // Atomic conditional update: DB enforces concurrency & tenant scope in 1 step
+  const updated = await db.queryOne(
+    \`UPDATE seat_pools
+     SET seats_remaining = seats_remaining - 1, version = version + 1
+     WHERE id = $1 AND org_id = $2 AND seats_remaining >= 1
+     RETURNING id, seats_remaining, version\`,
+    [seatPoolId, orgId]
+  );
+  if (!updated) throw new Error('No seats left (or invalid tenant)');
+
+  // For multi-field edits, pair with Optimistic Locking:
+  // UPDATE ... SET ..., version = version + 1 WHERE id = $1 AND version = $expected
+  return { claimed: true, remaining: updated.seats_remaining };
+}`,
+      annotations: [
+        {
+          id: 'mm-4-race',
+          label: '1. Read-Modify-Write Race Window',
+          problemLines: [2, 9],
+          refactoredLines: [2, 10],
+          severity: 'high',
+          problemExplanation:
+            'Between the `SELECT` on line 3 and the `UPDATE` on line 12, a second request reads the exact same `seats_remaining = 1` — both pass the `if` check and oversell the seat pool.',
+          refactoredExplanation:
+            'Putting `AND seats_remaining >= 1` and `AND org_id = $2` directly in one atomic SQL `UPDATE ... RETURNING` lets PostgreSQL serialize the row write safely and also prevents cross-tenant IDOR bugs.',
+        },
+        {
+          id: 'mm-4-tenant-check',
+          label: '2. Safe Optimistic Concurrency',
+          problemLines: [11, 16],
+          refactoredLines: [12, 15],
+          severity: 'medium',
+          problemExplanation:
+            'Writing back a JS-computed value (`pool.seats_remaining - 1`) silently overwrites concurrent updates and ignores `orgId` ownership on the row.',
+          refactoredExplanation:
+            'Incrementing a `version` column lets complex multi-field edits use Optimistic Locking (`WHERE version = $expected`), while HTTP `Idempotency-Key` headers stop client network retries.',
+        },
+      ],
+    },
   ],
   bestPractices: [
     {
@@ -386,7 +466,12 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
     {
       title: 'Route Heavy Reporting Queries to a Read Replica',
       detail:
-        'Point analytics dashboards and bulk CSV exports at a read replica so expensive read queries never starve core transactional writes.',
+        'Point analytics dashboards and bulk CSV exports at a read replica so expensive read queries never starve core transactional writes (keep post-write user reads on primary to avoid replication lag).',
+    },
+    {
+      title: 'Scope Every Query & Cache Key by Tenant ID (Multi-Tenant Safety)',
+      detail:
+        'In B2B SaaS monoliths, enforce `org_id` / `tenant_id` in PostgreSQL Row-Level Security (RLS) and prefix Redis keys (`tenant:{id}:*`) so a missing `WHERE` filter can never leak another customer’s data.',
     },
   ],
   pitfalls: [
@@ -394,6 +479,16 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
       title: 'The "Big Ball of Mud" Drift',
       symptom: 'Developers take shortcuts under deadline pressure and import helpers/repositories across folders.',
       fix: 'Expose one `publicApi.ts` file per module and block deep cross-module imports in your linter.',
+    },
+    {
+      title: 'Missing Tenant Isolation (Cross-Tenant Leaks & IDOR)',
+      symptom: 'A user changes `/api/projects/104` to `/api/projects/105` and views another organization’s records or cached response.',
+      fix: 'Require `tenantId` from the verified auth context in every repository call, enable Postgres RLS, and include `tenantId` in cache keys.',
+    },
+    {
+      title: 'Offset Pagination & Unbounded List Queries',
+      symptom: 'Endpoints like `GET /tasks?page=500` (`OFFSET 25000`) scan tens of thousands of rows and spike database CPU as tables grow.',
+      fix: 'Use cursor/keyset pagination (`WHERE created_at < $cursor LIMIT 50`) and always enforce a strict max page size.',
     },
     {
       title: 'Blocking the Shared Event Loop',
@@ -476,6 +571,11 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
           title: 'Decouple streak calculation with an in-process event',
           detail: 'Emit `habit.checkedIn` on `shared/eventBus.ts` so `streaks` updates streak counts without `habits` importing `streaks`.',
         },
+        {
+          id: 'mm-p1-m4',
+          title: 'Break it on purpose: Test boundary lint & listener error logs',
+          detail: 'Temporarily import `streaks/repo.ts` from `habits` to verify ESLint fails, then throw an error inside the streak listener and confirm structured logs capture it without breaking check-in.',
+        },
       ],
       architectureRules: [
         'Never import another module’s `repo.ts` directly — only import from `publicApi.ts`.',
@@ -522,6 +622,11 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
           title: 'Add an automated boundary check test',
           detail: 'Write a quick Vitest or ESLint rule verifying no file imports another module’s private internals.',
         },
+        {
+          id: 'mm-p2-m5',
+          title: 'Break it on purpose: Simulate a slow report & inspect latency logs',
+          detail: 'Add a 2-second delay to a fines summary query, log request durations with a correlation ID, and observe why heavy reporting belongs in a worker or read replica.',
+        },
       ],
       architectureRules: [
         'Loans may call `catalogApi` and `membersApi`, but Catalog and Members must never import from Loans.',
@@ -538,6 +643,7 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
     faultIsolation: 'Moderate',
     costAtIdle: 'Fixed (Low)',
     dataConsistency: 'Strong (ACID)',
+    typicalDatastore: 'Single Postgres (separate module schemas) + optional Redis',
     bestFor: 'Startups, SaaS MVPs, evolving domains, fast shipping with low ops overhead',
   },
 };

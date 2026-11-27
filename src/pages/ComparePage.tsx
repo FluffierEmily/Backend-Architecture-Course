@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Compass } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Compass, Copy } from 'lucide-react';
 import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId } from '../types/course';
 
@@ -47,19 +47,178 @@ const PRIORITY_FILTERS: PriorityFilter[] = [
 const COMPARE_STEPS = [
   { id: 'matrix', label: '1. Side-by-Side Matrix' },
   { id: 'hybrids', label: '2. Hybrids & Strangler Fig' },
+  { id: 'cost', label: '3. Cost Intuition' },
+  { id: 'sizing-adr', label: '4. Sizing & ADR Kit' },
 ] as const;
 
+const ADR_TEMPLATE_MD = `# ADR-001: Choose Initial Backend Architecture
+
+- **Date:** YYYY-MM-DD
+- **Status:** Proposed | Accepted | Superseded
+- **Owners:** Backend / Product Engineering
+
+## 1. Context & Non-Functional Requirements (NFRs)
+- **Team size & skills:** e.g., 5 TypeScript engineers, no dedicated SRE
+- **Traffic profile:** e.g., ~25 avg QPS, ~150 peak QPS (~65M req/month)
+- **Consistency & latency:** e.g., Strong ACID for billing; p95 < 250ms
+- **Compliance / isolation:** e.g., B2B multi-tenant with Postgres RLS
+
+## 2. Options Considered
+1. **Modular Monolith** — Fast MVP velocity, ACID transactions, lowest ops overhead.
+2. **Microservices** — High ops cost for 5 devs; premature without squad bottlenecks.
+3. **Serverless** — Great for spiky PDF/webhook workers, heavier for relational CRUD.
+4. **Event-Driven** — Unneeded broker overhead for core synchronous flows.
+
+## 3. Decision
+Adopt a **Modular Monolith** (Postgres with per-module schemas + ESLint boundaries) paired with a **persistent job queue / Serverless worker** for bursty async PDF exports.
+
+## 4. Consequences & Revisit Triggers
+- **Positive:** Single deploy pipeline, fast in-process integration tests, predictable cost.
+- **Trade-offs:** Shared process blast radius — enforce worker separation for CPU-heavy tasks.
+- **Revisit triggers (when to extract via Strangler Fig):**
+  - Engineering org grows past ~30 developers colliding on deploys, OR
+  - One module requires specialized hardware (GPU/ML) or 10x independent scaling.`;
+
 type CompareStepId = (typeof COMPARE_STEPS)[number]['id'];
+
+type TrafficTier = '10k' | '10m';
+
+interface CostEstimateItem {
+  id: ArchitectureId;
+  name: string;
+  monthlyRange: string;
+  opsDriver: string;
+  note: string;
+  verdict: 'cheapest' | 'balanced' | 'pricey';
+}
+
+const COST_TIERS: Record<
+  TrafficTier,
+  { label: string; summary: string; takeaway: string; items: CostEstimateItem[] }
+> = {
+  '10k': {
+    label: '10k req / month (Side Project / Early MVP)',
+    summary:
+      'Rough order-of-magnitude monthly cloud bill (compute + core infra, excluding engineering salaries) for a low-traffic or bursty early app.',
+    takeaway:
+      'At early scale, Serverless ($0–$10/mo) and a single Modular Monolith container ($15–$40/mo) win by a mile. Running Kubernetes or managed Kafka clusters for 10k requests burns hundreds of dollars on idle baseline overhead.',
+    items: [
+      {
+        id: 'serverless',
+        name: 'Serverless Functions',
+        monthlyRange: '$0 – $10 / mo',
+        opsDriver: 'Pay-per-request (mostly inside free tier)',
+        note: 'Scales to zero overnight — ideal for prototypes, webhooks, and sporadic batch tasks.',
+        verdict: 'cheapest',
+      },
+      {
+        id: 'modular-monolith',
+        name: 'Modular Monolith',
+        monthlyRange: '$15 – $40 / mo',
+        opsDriver: '1 small app container + 1 managed Postgres',
+        note: 'Predictable flat bill with zero surprise traffic-spike invoices and minimal setup.',
+        verdict: 'cheapest',
+      },
+      {
+        id: 'event-driven',
+        name: 'Event-Driven (Managed Broker + Workers)',
+        monthlyRange: '$80 – $350 / mo',
+        opsDriver: 'Always-on broker + consumer containers + DB',
+        note: 'A tiny Redis/SQS queue inside a monolith is cheap, but a dedicated managed Kafka cluster has high idle cost.',
+        verdict: 'balanced',
+      },
+      {
+        id: 'microservices',
+        name: 'Microservices Cluster',
+        monthlyRange: '$250 – $900+ / mo',
+        opsDriver: 'Multiple containers, load balancers, NAT gateways, separate DBs, observability',
+        note: 'Fixed baseline infrastructure + platform engineering time far outweigh compute savings at low traffic.',
+        verdict: 'pricey',
+      },
+    ],
+  },
+  '10m': {
+    label: '10M req / month (Growing Production)',
+    summary:
+      'Rough order-of-magnitude monthly cloud bill at ~4–10 steady requests/sec (or spiky bursts totaling 10M requests/month).',
+    takeaway:
+      'At steady high volume, always-on containers (Modular Monolith or right-sized Microservices) become very cost-efficient per request, while Serverless costs depend heavily on execution duration and burstiness vs. 24/7 steady load.',
+    items: [
+      {
+        id: 'modular-monolith',
+        name: 'Modular Monolith',
+        monthlyRange: '$120 – $350 / mo',
+        opsDriver: '2–4 stateless replicas + pooled Postgres + Redis cache',
+        note: 'Surprisingly far-reaching: a few well-indexed Node.js/Postgres nodes handle 10M+ req/mo comfortably.',
+        verdict: 'cheapest',
+      },
+      {
+        id: 'serverless',
+        name: 'Serverless Functions',
+        monthlyRange: '$80 – $450 / mo',
+        opsDriver: 'Invocations + GB-seconds + API Gateway fees',
+        note: 'Still very affordable if fast (<150ms) and bursty — but slow 2-second functions or unthrottled bots can spike bills fast.',
+        verdict: 'balanced',
+      },
+      {
+        id: 'event-driven',
+        name: 'Event-Driven (Broker + Workers)',
+        monthlyRange: '$300 – $1,200 / mo',
+        opsDriver: 'Managed Kafka/RabbitMQ + auto-scaled consumer groups + storage',
+        note: 'Pays for itself when buffering heavy fan-out spikes and protecting downstream databases from scaling up 5x.',
+        verdict: 'balanced',
+      },
+      {
+        id: 'microservices',
+        name: 'Microservices Cluster',
+        monthlyRange: '$800 – $3,000+ / mo',
+        opsDriver: 'Per-service DBs, cross-AZ network transfer, tracing/log ingestion, SRE tooling',
+        note: 'The cloud bill isn’t just CPU — cross-service traffic, multiple databases, and observability logs dominate costs.',
+        verdict: 'pricey',
+      },
+    ],
+  },
+};
 
 export function ComparePage() {
   const [viewMode, setViewMode] = useState<'guided' | 'all'>('guided');
   const [stepIdx, setStepIdx] = useState(0);
   const [activePriority, setActivePriority] = useState<string>('all');
+  const [trafficTier, setTrafficTier] = useState<TrafficTier>('10k');
+  const [dau, setDau] = useState(25000);
+  const [reqPerUser, setReqPerUser] = useState(40);
+  const [peakMultiplier, setPeakMultiplier] = useState(5);
+  const [payloadKb, setPayloadKb] = useState(12);
+  const [adrCopied, setAdrCopied] = useState(false);
+
+  const dailyRequests = dau * reqPerUser;
+  const avgQps = dailyRequests / 86400;
+  const peakQps = avgQps * peakMultiplier;
+  const monthlyRequests = dailyRequests * 30;
+  const dailyBandwidthGb = (dailyRequests * payloadKb) / (1024 * 1024);
+
+  const sizingVerdict =
+    peakQps < 200
+      ? 'A single well-indexed Modular Monolith (1–2 replicas + Postgres) or Serverless handles this workload easily — prioritize team velocity over distributed complexity.'
+      : peakQps < 2000
+      ? 'A horizontally scaled Modular Monolith with Redis caching, read replicas, and async queues handles this comfortably; extract only genuinely hot or spiky slices.'
+      : 'High sustained throughput! Plan for caching/CDN layers, read replicas or specialized stores, event-driven buffering for bursts, and independent scaling of hot services.';
+
+  const handleCopyAdr = async () => {
+    try {
+      await navigator.clipboard.writeText(ADR_TEMPLATE_MD);
+      setAdrCopied(true);
+      setTimeout(() => setAdrCopied(false), 2000);
+    } catch {
+      setAdrCopied(false);
+    }
+  };
 
   const currentFilter =
     PRIORITY_FILTERS.find((p) => p.id === activePriority) ?? PRIORITY_FILTERS[0];
   const activeStep: CompareStepId = COMPARE_STEPS[stepIdx].id;
   const isVisible = (id: CompareStepId) => viewMode === 'all' || activeStep === id;
+  const activeCostTier = COST_TIERS[trafficTier];
 
   const goToStep = (next: number) => {
     setStepIdx(next);
@@ -82,6 +241,7 @@ export function ComparePage() {
     { label: 'Fault Isolation', render: (m) => m.comparisonProfile.faultIsolation },
     { label: 'Cost While Idle', render: (m) => m.comparisonProfile.costAtIdle },
     { label: 'Data Consistency', render: (m) => m.comparisonProfile.dataConsistency },
+    { label: 'Typical Datastore', render: (m) => m.comparisonProfile.typicalDatastore },
     { label: 'Best Used For', render: (m) => m.comparisonProfile.bestFor },
   ];
 
@@ -96,8 +256,8 @@ export function ComparePage() {
             Compare All 4 Backend Architectures
           </h1>
           <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
-            Pick your primary constraint to highlight the best matches, then explore how real teams
-            combine and evolve patterns safely.
+            Pick your primary constraint to highlight the best matches, explore real-world hybrids,
+            and build order-of-magnitude cost intuition.
           </p>
         </div>
 
@@ -127,7 +287,7 @@ export function ComparePage() {
             </div>
           ) : (
             <span className="pb-3 text-xs font-medium text-slate-500 dark:text-slate-400">
-              Showing both sections on one page
+              Showing all {COMPARE_STEPS.length} sections on one page
             </span>
           )}
 
@@ -334,34 +494,372 @@ export function ComparePage() {
                 </div>
               ))}
             </div>
+
+            {/* How the Database Splits Safely */}
+            <div className="mt-6 border-t border-stone-200 pt-5 dark:border-slate-700/80">
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                The Hardest Part · Splitting the Shared Database Safely
+              </p>
+              <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Routing HTTP URLs is the easy half of Strangler Fig. Extracting a module’s tables
+                without downtime takes four deliberate steps:
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  {
+                    step: '1. Break SQL JOINs & FKs',
+                    detail:
+                      'Replace cross-module foreign keys and JOINs with module API calls so tables are logically independent.',
+                  },
+                  {
+                    step: '2. Dual-Write or CDC Sync',
+                    detail:
+                      'Stream writes from the old tables into the new private database using an Outbox or Debezium CDC.',
+                  },
+                  {
+                    step: '3. Backfill & Verify Parity',
+                    detail:
+                      'Copy historical rows and run shadow read comparisons until old and new databases match 100%.',
+                  },
+                  {
+                    step: '4. Cut Over & Retire',
+                    detail:
+                      'Flip live reads/writes to the new service DB, pause before deleting, then drop legacy tables safely.',
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.step}
+                    className="rounded-xl border border-stone-200 bg-stone-50 p-3.5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
+                  >
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{item.step}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                      {item.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 3: Order-of-Magnitude Cost Intuition */}
+      {isVisible('cost') && (
+        <section className="space-y-5">
+          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                  Order-of-Magnitude Cost Modeling
+                </p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+                  Cloud Cost Intuition: 10k vs. 10M Requests / Month
+                </h2>
+              </div>
+
+              <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-[#0f172a]">
+                <button
+                  type="button"
+                  onClick={() => setTrafficTier('10k')}
+                  className={`rounded-lg px-3.5 py-1.5 transition ${
+                    trafficTier === '10k'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  10k req / mo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrafficTier('10m')}
+                  className={`rounded-lg px-3.5 py-1.5 transition ${
+                    trafficTier === '10m'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  10M req / mo
+                </button>
+              </div>
+            </div>
+
+            <p className="prose-measure mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {activeCostTier.summary}
+            </p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {activeCostTier.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <Link
+                      to={`/modules/${item.id}`}
+                      className="text-sm font-bold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
+                    >
+                      {item.name}
+                    </Link>
+                    <span
+                      className={`font-mono text-sm font-extrabold ${
+                        item.verdict === 'cheapest'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : item.verdict === 'balanced'
+                          ? 'text-sky-600 dark:text-sky-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {item.monthlyRange}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Main driver: {item.opsDriver}
+                  </p>
+                  <p className="mt-2.5 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                    {item.note}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-7 text-slate-800 dark:text-slate-100">
+              <strong className="text-indigo-700 dark:text-indigo-300">Key Takeaway: </strong>
+              {activeCostTier.takeaway}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 4: 5-Minute NFR Sizing Calculator & ADR Template */}
+      {isVisible('sizing-adr') && (
+        <section className="space-y-6">
+          {/* NFR Back-of-the-Envelope Estimator */}
+          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+            <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+              Quantify Before You Architect
+            </p>
+            <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+              5-Minute Back-of-the-Envelope Sizing Estimator
+            </h2>
+            <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Before choosing distributed infrastructure, estimate your actual QPS, burstiness, and
+              daily egress — most teams overestimate traffic by 10x.
+            </p>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <div className="space-y-4 rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+                <div>
+                  <div className="flex justify-between text-xs font-semibold">
+                    <label htmlFor="dau-slider" className="text-slate-700 dark:text-slate-200">
+                      Daily Active Users (DAU)
+                    </label>
+                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-300">
+                      {dau.toLocaleString()}
+                    </span>
+                  </div>
+                  <input
+                    id="dau-slider"
+                    type="range"
+                    min={1000}
+                    max={500000}
+                    step={1000}
+                    value={dau}
+                    onChange={(e) => setDau(Number(e.target.value))}
+                    className="mt-1.5 w-full accent-indigo-600"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold">
+                    <label htmlFor="rpu-slider" className="text-slate-700 dark:text-slate-200">
+                      API Requests / User / Day
+                    </label>
+                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-300">
+                      {reqPerUser}
+                    </span>
+                  </div>
+                  <input
+                    id="rpu-slider"
+                    type="range"
+                    min={5}
+                    max={200}
+                    step={5}
+                    value={reqPerUser}
+                    onChange={(e) => setReqPerUser(Number(e.target.value))}
+                    className="mt-1.5 w-full accent-indigo-600"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold">
+                      <label htmlFor="peak-slider" className="text-slate-700 dark:text-slate-200">
+                        Peak Burst Multiplier
+                      </label>
+                      <span className="font-mono font-bold text-indigo-600 dark:text-indigo-300">
+                        {peakMultiplier}x
+                      </span>
+                    </div>
+                    <input
+                      id="peak-slider"
+                      type="range"
+                      min={2}
+                      max={20}
+                      value={peakMultiplier}
+                      onChange={(e) => setPeakMultiplier(Number(e.target.value))}
+                      className="mt-1.5 w-full accent-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold">
+                      <label htmlFor="payload-slider" className="text-slate-700 dark:text-slate-200">
+                        Avg Payload Size
+                      </label>
+                      <span className="font-mono font-bold text-indigo-600 dark:text-indigo-300">
+                        {payloadKb} KB
+                      </span>
+                    </div>
+                    <input
+                      id="payload-slider"
+                      type="range"
+                      min={2}
+                      max={100}
+                      step={2}
+                      value={payloadKb}
+                      onChange={(e) => setPayloadKb(Number(e.target.value))}
+                      className="mt-1.5 w-full accent-indigo-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-between rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-stone-200 bg-white p-3 dark:border-slate-700 dark:bg-[#162033]">
+                    <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
+                      Average QPS
+                    </p>
+                    <p className="mt-1 font-mono text-lg font-extrabold text-slate-900 dark:text-white">
+                      {avgQps < 10 ? avgQps.toFixed(1) : Math.round(avgQps).toLocaleString()} req/s
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-stone-200 bg-white p-3 dark:border-slate-700 dark:bg-[#162033]">
+                    <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
+                      Peak QPS
+                    </p>
+                    <p className="mt-1 font-mono text-lg font-extrabold text-indigo-600 dark:text-indigo-300">
+                      {peakQps < 10 ? peakQps.toFixed(1) : Math.round(peakQps).toLocaleString()}{' '}
+                      req/s
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-stone-200 bg-white p-3 dark:border-slate-700 dark:bg-[#162033]">
+                    <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
+                      Monthly Volume
+                    </p>
+                    <p className="mt-1 font-mono text-sm font-bold text-slate-900 dark:text-white">
+                      {(monthlyRequests / 1_000_000).toFixed(1)}M req/mo
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-stone-200 bg-white p-3 dark:border-slate-700 dark:bg-[#162033]">
+                    <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
+                      Daily Egress
+                    </p>
+                    <p className="mt-1 font-mono text-sm font-bold text-slate-900 dark:text-white">
+                      {dailyBandwidthGb.toFixed(1)} GB/day
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-3.5 text-xs leading-6 text-slate-800 dark:text-slate-100">
+                  <strong className="text-indigo-700 dark:text-indigo-300">
+                    Architecture Intuition:{' '}
+                  </strong>
+                  {sizingVerdict}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 1-Page ADR Template */}
+          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  Communicating Trade-Offs
+                </p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+                  Lightweight Architecture Decision Record (ADR) Template
+                </h2>
+                <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Document *why* you chose an architecture — and define explicit revisit triggers so
+                  future engineers know when to evolve it.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCopyAdr}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500"
+              >
+                {adrCopied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Copied ADR (.md)
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy ADR Template (.md)
+                  </>
+                )}
+              </button>
+            </div>
+
+            <pre className="mt-5 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-4 font-mono text-xs leading-6 text-slate-200">
+              {ADR_TEMPLATE_MD}
+            </pre>
           </div>
         </section>
       )}
 
       {/* Quiet Step Footer */}
-      {viewMode === 'guided' && stepIdx === 0 && (
-        <footer className="flex justify-end pt-2">
+      {viewMode === 'guided' && stepIdx < COMPARE_STEPS.length - 1 && (
+        <footer className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          {stepIdx > 0 ? (
+            <button
+              type="button"
+              onClick={() => goToStep(stepIdx - 1)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Previous: {COMPARE_STEPS[stepIdx - 1].label}
+            </button>
+          ) : (
+            <span />
+          )}
+
           <button
             type="button"
-            onClick={() => goToStep(1)}
+            onClick={() => goToStep(stepIdx + 1)}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
           >
-            Continue: 2. Hybrids &amp; Strangler Fig
+            Continue: {COMPARE_STEPS[stepIdx + 1].label}
             <ArrowRight className="h-4 w-4" />
           </button>
         </footer>
       )}
 
-      {(viewMode === 'all' || stepIdx === 1) && (
+      {(viewMode === 'all' || stepIdx === COMPARE_STEPS.length - 1) && (
         <footer className="flex flex-wrap items-center justify-between gap-4 pt-2">
           {viewMode === 'guided' ? (
             <button
               type="button"
-              onClick={() => goToStep(0)}
+              onClick={() => goToStep(stepIdx - 1)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Matrix
+              Back to Cost Intuition
             </button>
           ) : (
             <span className="text-sm text-slate-600 dark:text-slate-300">

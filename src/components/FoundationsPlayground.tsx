@@ -3,23 +3,31 @@ import { Link } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
+  Building2,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Cpu,
   Database,
+  FlaskConical,
   Gauge,
   GitBranch,
   Globe,
+  HardDrive,
+  HeartPulse,
+  KeyRound,
   Layers,
   Lock,
+  Radio,
+  Rocket,
   Scale,
   Shield,
   Zap,
 } from 'lucide-react';
 import { ARCHITECTURE_BY_ID, FOUNDATION_BLOCKS } from '../data';
 import type { FoundationBlock } from '../types/course';
+import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
 
 const BLOCK_ICONS: Record<FoundationBlock['icon'], typeof Globe> = {
   globe: Globe,
@@ -33,6 +41,13 @@ const BLOCK_ICONS: Record<FoundationBlock['icon'], typeof Globe> = {
   activity: Activity,
   lock: Lock,
   'git-branch': GitBranch,
+  'flask-conical': FlaskConical,
+  'key-round': KeyRound,
+  radio: Radio,
+  'hard-drive': HardDrive,
+  rocket: Rocket,
+  building: Building2,
+  'heart-pulse': HeartPulse,
 };
 
 interface FoundationsPlaygroundProps {
@@ -48,6 +63,7 @@ export function FoundationsPlayground({
   const [visitedIds, setVisitedIds] = useState<string[]>([FOUNDATION_BLOCKS[0].id]);
   const [jumpOpen, setJumpOpen] = useState(false);
   const [trafficSpike, setTrafficSpike] = useState(false);
+  const [activeLab, setActiveLab] = useState<'spike' | 'breaker' | 'reliability'>('spike');
 
   const activeBlock = FOUNDATION_BLOCKS[activeIndex] ?? FOUNDATION_BLOCKS[0];
   const ActiveIcon = BLOCK_ICONS[activeBlock.icon];
@@ -83,7 +99,7 @@ export function FoundationsPlayground({
                 </button>
 
                 {jumpOpen && (
-                  <div className="absolute left-0 z-20 mt-1.5 w-72 rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
+                  <div className="absolute left-0 z-20 mt-1.5 max-h-80 w-80 overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
                     {FOUNDATION_BLOCKS.map((block, index) => {
                       const isCurrent = index === activeIndex;
                       const isVisited = visitedIds.includes(block.id);
@@ -239,7 +255,7 @@ export function FoundationsPlayground({
                 onClick={onFinishBlocks}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
               >
-                Continue to Traffic Spike Lab
+                Continue to Interactive Labs
                 <ChevronRight className="h-4 w-4" />
               </button>
             ) : null}
@@ -247,133 +263,171 @@ export function FoundationsPlayground({
         </div>
       )}
 
-      {/* PART 2: Mini Traffic Spike Interactive Comparison */}
+      {/* PART 2: Interactive Mini-Labs (1 calm lab at a time via clean switcher) */}
       {(section === 'lab' || section === 'both') && (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                Interactive Mini-Lab
-              </span>
-              <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
-                Why Queues &amp; Async Matter During Traffic Spikes
-              </h2>
-              <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Toggle a sudden 10x burst of PDF/image jobs to compare a direct synchronous server
-                against a queue-buffered worker backend.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setTrafficSpike((prev) => !prev)}
-              className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition ${
-                trafficSpike
-                  ? 'bg-emerald-600 hover:bg-emerald-500'
-                  : 'bg-indigo-600 hover:bg-indigo-500'
-              }`}
-            >
-              {trafficSpike
-                ? 'Reset to Normal Load (20 req/s)'
-                : 'Trigger 10x Flash Spike (200 req/s)'}
-            </button>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Interactive labs">
+            {(
+              [
+                { id: 'spike', label: 'Lab 1 · Traffic Spike (Sync vs. Queue)' },
+                { id: 'breaker', label: 'Lab 2 · Circuit Breaker States' },
+                { id: 'reliability', label: 'Lab 3 · Availability Math & Outbox Crash' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeLab === tab.id}
+                onClick={() => setActiveLab(tab.id)}
+                className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition ${
+                  activeLab === tab.id
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-stone-100 text-slate-700 hover:bg-stone-200 dark:bg-[#162033] dark:text-slate-300 dark:hover:bg-slate-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            {/* Direct Sync */}
-            <div
-              className={`rounded-2xl border p-5 transition ${
-                trafficSpike
-                  ? 'border-rose-500/40 bg-rose-500/10'
-                  : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-slate-900 dark:text-white">
-                  1. Direct Synchronous Server
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                    trafficSpike
-                      ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
-                      : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                  }`}
-                >
-                  {trafficSpike ? 'OVERLOADED (503 Errors!)' : 'Healthy'}
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Server CPU &amp; Memory</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">
-                    {trafficSpike ? '100% Saturated' : '32%'}
-                  </span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      trafficSpike ? 'w-full bg-rose-500' : 'w-1/3 bg-emerald-500'
+          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+            {activeLab === 'spike' && (
+              <>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      Interactive Mini-Lab
+                    </span>
+                    <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+                      Why Queues &amp; Async Matter During Traffic Spikes
+                    </h2>
+                    <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      Toggle a sudden 10x burst of PDF/image jobs to compare a direct synchronous
+                      server against a queue-buffered worker backend.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTrafficSpike((prev) => !prev)}
+                    className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition ${
+                      trafficSpike
+                        ? 'bg-emerald-600 hover:bg-emerald-500'
+                        : 'bg-indigo-600 hover:bg-indigo-500'
                     }`}
-                  />
+                  >
+                    {trafficSpike
+                      ? 'Reset to Normal Load (20 req/s)'
+                      : 'Trigger 10x Flash Spike (200 req/s)'}
+                  </button>
                 </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-600 dark:text-slate-400">Dropped Requests</span>
-                  <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
-                    {trafficSpike ? '140 req/sec failed (504 Timeout)' : '0'}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3.5 text-xs leading-6 text-slate-600 dark:text-slate-300">
-                {trafficSpike
-                  ? 'Because the HTTP handler waits for heavy work to finish, all worker threads fill up and new users hit timeouts.'
-                  : 'Under steady low traffic, synchronous handling is simple and fast.'}
-              </p>
-            </div>
 
-            {/* Queue Buffered */}
-            <div
-              className={`rounded-2xl border p-5 transition ${
-                trafficSpike
-                  ? 'border-emerald-500/40 bg-emerald-500/10'
-                  : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-slate-900 dark:text-white">
-                  2. Queue-Buffered Async Workers
-                </span>
-                <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                  {trafficSpike ? 'Absorbing Spike Smoothly' : 'Healthy'}
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Queue Buffer Depth</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">
-                    {trafficSpike ? '160 jobs safely queued' : '0 jobs queued'}
-                  </span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800">
+                <div className="mt-6 grid gap-5 md:grid-cols-2">
+                  {/* Direct Sync */}
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      trafficSpike ? 'w-3/4 bg-amber-400' : 'w-[8%] bg-emerald-500'
+                    className={`rounded-2xl border p-5 transition ${
+                      trafficSpike
+                        ? 'border-rose-500/40 bg-rose-500/10'
+                        : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
                     }`}
-                  />
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        1. Direct Synchronous Server
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                          trafficSpike
+                            ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
+                            : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                        }`}
+                      >
+                        {trafficSpike ? 'OVERLOADED (503 Errors!)' : 'Healthy'}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-2.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Server CPU &amp; Memory
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          {trafficSpike ? '100% Saturated' : '32%'}
+                        </span>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            trafficSpike ? 'w-full bg-rose-500' : 'w-1/3 bg-emerald-500'
+                          }`}
+                        />
+                      </div>
+                      <div className="flex justify-between pt-1">
+                        <span className="text-slate-600 dark:text-slate-400">Dropped Requests</span>
+                        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                          {trafficSpike ? '140 req/sec failed (504 Timeout)' : '0'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-3.5 text-xs leading-6 text-slate-600 dark:text-slate-300">
+                      {trafficSpike
+                        ? 'Because the HTTP handler waits for heavy work to finish, all worker threads fill up and new users hit timeouts.'
+                        : 'Under steady low traffic, synchronous handling is simple and fast.'}
+                    </p>
+                  </div>
+
+                  {/* Queue Buffered */}
+                  <div
+                    className={`rounded-2xl border p-5 transition ${
+                      trafficSpike
+                        ? 'border-emerald-500/40 bg-emerald-500/10'
+                        : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        2. Queue-Buffered Async Workers
+                      </span>
+                      <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                        {trafficSpike ? 'Absorbing Spike Smoothly' : 'Healthy'}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-2.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Queue Buffer Depth
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          {trafficSpike ? '160 jobs safely queued' : '0 jobs queued'}
+                        </span>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            trafficSpike ? 'w-3/4 bg-amber-400' : 'w-[8%] bg-emerald-500'
+                          }`}
+                        />
+                      </div>
+                      <div className="flex justify-between pt-1">
+                        <span className="text-slate-600 dark:text-slate-400">Dropped Requests</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          0 (all replied 202 Accepted)
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-3.5 text-xs leading-6 text-slate-600 dark:text-slate-300">
+                      {trafficSpike
+                        ? 'The API replies 202 in milliseconds and parks jobs in the queue. Workers chew through the backlog steadily without crashing.'
+                        : 'Workers process incoming jobs immediately while keeping latency predictable.'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-600 dark:text-slate-400">Dropped Requests</span>
-                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    0 (all replied 202 Accepted)
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3.5 text-xs leading-6 text-slate-600 dark:text-slate-300">
-                {trafficSpike
-                  ? 'The API replies 202 in milliseconds and parks jobs in the queue. Workers chew through the backlog steadily without crashing.'
-                  : 'Workers process incoming jobs immediately while keeping latency predictable.'}
-              </p>
-            </div>
+              </>
+            )}
+
+            {activeLab === 'breaker' && <CircuitBreakerLab />}
+            {activeLab === 'reliability' && <AvailabilityAndOutboxLab />}
           </div>
         </div>
       )}

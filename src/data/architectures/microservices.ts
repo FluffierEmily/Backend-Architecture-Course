@@ -181,6 +181,47 @@ export const microservicesModule: ArchitectureModule = {
       keyTakeaway:
         'Treat every internal service API like a public API — breaking changes require a versioned rollout and a deprecation window, never a surprise deploy.',
     },
+    {
+      id: 'ms-protocols',
+      badge: 'Communication Protocols',
+      title: 'Choosing Protocols: REST vs. gRPC vs. GraphQL',
+      summary:
+        'Microservices don’t all have to speak plain REST/JSON — pick the protocol that matches who is calling whom and how strict the latency budget is.',
+      bulletPoints: [
+        'REST / JSON: Best default for public APIs, browser clients, and simple internal services (universal tooling & HTTP caching).',
+        'gRPC / Protobuf: Ideal for high-throughput internal service-to-service hops — binary serialization, strict generated types, streaming, and built-in deadline propagation.',
+        'GraphQL: Useful as a flexible BFF layer aggregating multiple microservices for web/mobile clients, but watch out for N+1 resolver storms, missing HTTP GET caching, and unbounded query depth.',
+      ],
+      keyTakeaway:
+        'Use REST or a GraphQL BFF at the public edge, and reach for gRPC internally when strict typed contracts and low-latency binary calls matter.',
+    },
+    {
+      id: 'ms-service-discovery-mesh',
+      badge: 'Infrastructure Reality',
+      title: 'Load Balancers, Service Discovery & Service Meshes',
+      summary:
+        'In a dynamic container cluster where IP addresses change every deploy, services need reliable routing, health checks, and encrypted service-to-service networking.',
+      bulletPoints: [
+        'L4 vs. L7 Load Balancing: L4 routes raw TCP packets fast; L7 inspects HTTP paths, headers, and JWTs to route `/billing/*` vs `/playback/*`.',
+        'Service Discovery: Platforms like Kubernetes DNS let callers target stable names (`http://billing-svc`) that resolve only to pods passing Readiness health checks.',
+        'Service Mesh (Envoy / Istio): Injects sidecar proxies for automatic mTLS, tracing, and retries — powerful at 40+ services, but unnecessary operational tax for small clusters.',
+      ],
+      keyTakeaway:
+        'Start with standard platform DNS service discovery and an L7 API Gateway — adopt a Service Mesh only when managing dozens of polyglot services justifies the complexity.',
+    },
+    {
+      id: 'ms-availability-boundaries',
+      badge: 'Availability & Boundaries',
+      title: 'Compounding Availability Math & Avoiding Nano-Services',
+      summary:
+        'Splitting services too finely (one service per database table) creates long synchronous call chains that actually make uptime WORSE than a monolith.',
+      bulletPoints: [
+        'Compounding Math: If an endpoint synchronously calls 5 microservices that are each 99.9% available, combined availability drops to 99.9%^5 ≈ 99.5% (~3.6 hours downtime/month instead of 43 minutes)!',
+        'Conway’s Law & Bounded Contexts: Align services with autonomous teams and complete business capabilities (Checkout, Playback), never tiny entity-CRUD wrappers (`users-svc` + `addresses-svc`).',
+      ],
+      keyTakeaway:
+        'Keep synchronous call chains shallow (1–2 hops), fall back gracefully on non-critical calls, and size services around real team boundaries.',
+    },
   ],
   codeComparisons: [
     {
@@ -374,6 +415,77 @@ export async function getHomeFeed(userId: string) {
         },
       ],
     },
+    {
+      id: 'ms-http-idempotency-saga',
+      title: 'Unsafe Retries & Stranded Charges vs. Idempotency Keys & Saga Undo',
+      subtitle: 'Mutating multi-service HTTP flows need client Idempotency-Keys AND compensating undo steps.',
+      context:
+        'A StreamFlix viewer purchases a live Pay-Per-View bundle on flaky train Wi-Fi: the checkout orchestrator charges Billing, then unlocks the stream in Playback.',
+      problemTitle: 'Pitfall: No Idempotency-Key and no compensating refund if Step 2 fails',
+      problemFile: 'checkout-orchestrator/src/purchaseBundle.ts',
+      problemCode: `export async function purchaseBundle(userId: string, bundleId: string) {
+  // No Idempotency-Key: flaky Wi-Fi retry charges the card twice!
+  const payment = await fetchJsonWithTimeout('http://billing-svc/charges', 500, {
+    method: 'POST',
+    body: { userId, bundleId },
+  });
+
+  // If entitlement activation fails below, the user's money is stranded!
+  await fetchJsonWithTimeout('http://playback-svc/entitlements', 500, {
+    method: 'POST',
+    body: { userId, bundleId },
+  });
+  return { chargeId: payment.id };
+}`,
+      refactoredTitle: 'Refactored: Client Idempotency-Key + Saga compensating refund queue',
+      refactoredFile: 'checkout-orchestrator/src/purchaseBundle.ts',
+      refactoredCode: `export async function purchaseBundle(userId: string, bundleId: string, idemKey: string) {
+  // 1. Forward client Idempotency-Key so retries never double-charge
+  const payment = await postWithRetry('http://billing-svc/charges', {
+    headers: { 'Idempotency-Key': idemKey },
+    body: { userId, bundleId },
+    timeoutMs: 500,
+    backoffWithJitter: true,
+  });
+
+  try {
+    await postWithRetry('http://playback-svc/entitlements', {
+      headers: { 'Idempotency-Key': \`\${idemKey}-entitle\` },
+      body: { userId, bundleId },
+      timeoutMs: 500,
+    });
+    return { chargeId: payment.id, status: 'completed' };
+  } catch (err) {
+    // 2. Saga compensating action: idempotent refund unwinds Step 1
+    await refundQueue.enqueue({ chargeId: payment.id, idempotencyKey: \`\${idemKey}-refund\` });
+    throw err;
+  }
+}`,
+      annotations: [
+        {
+          id: 'ms-4-idempotency',
+          label: '1. Duplicate HTTP Charge on Retry',
+          problemLines: [2, 6],
+          refactoredLines: [2, 8],
+          severity: 'high',
+          problemExplanation:
+            'If the mobile app times out and retries `POST /purchase`, Billing sees a fresh `POST /charges` request and bills the viewer twice.',
+          refactoredExplanation:
+            'Passing a client-generated `Idempotency-Key` header lets Billing cache and replay the original charge result on retries, paired with jittered backoff to avoid retry storms.',
+        },
+        {
+          id: 'ms-4-saga-undo',
+          label: '2. Missing Saga Compensating Action',
+          problemLines: [8, 13],
+          refactoredLines: [10, 21],
+          severity: 'high',
+          problemExplanation:
+            'Because Billing and Playback own separate databases, there is no shared SQL rollback. If `playback-svc` returns 503, the viewer paid for a match they cannot watch!',
+          refactoredExplanation:
+            'Enqueueing a durable, idempotent refund job guarantees Step 1 is cleanly compensated even if Billing is briefly unreachable during rollback.',
+        },
+      ],
+    },
   ],
   bestPractices: [
     {
@@ -401,12 +513,22 @@ export async function getHomeFeed(userId: string) {
       detail:
         'Validate payloads at service boundaries, keep JSON schema evolution additive-only, and run automated contract tests so teams can deploy safely in any order.',
     },
+    {
+      title: 'Enforce Client Idempotency Keys on Mutating HTTP Endpoints',
+      detail:
+        'Accept an `Idempotency-Key` header on `POST` writes (charges, orders, bookings) and design Saga compensating actions to be idempotent too so retries never double-bill or double-refund.',
+    },
   ],
   pitfalls: [
     {
       title: 'The Distributed Monolith',
       symptom: 'Shipping one small feature requires coordinating deploys across 4 services in a specific order.',
       fix: 'Use backward-compatible API versioning, eliminate shared databases, and merge overly chatty services back together.',
+    },
+    {
+      title: 'Entity-Driven Nano-Services',
+      symptom: 'Splitting by database table (`users-svc`, `addresses-svc`, `phones-svc`) creates 6-hop synchronous call chains and terrible compounding availability.',
+      fix: 'Group tightly related data around business capabilities (Bounded Contexts) and Conway’s Law team ownership.',
     },
     {
       title: 'N+1 Network Calls',
@@ -427,6 +549,11 @@ export async function getHomeFeed(userId: string) {
       title: 'Retry Storms',
       symptom: 'A struggling service gets 10x more traffic because upstream services immediately retry failed calls in tight loops.',
       fix: 'Use exponential backoff with jitter and wrap failing dependencies in a Circuit Breaker.',
+    },
+    {
+      title: 'Missing Deadline Propagation',
+      symptom: 'Service A times out after 500ms and returns an error to the user, yet Service B and Service C keep running an expensive 10-second query nobody will ever read.',
+      fix: 'Pass the remaining deadline budget (`x-deadline-ms` or gRPC deadline) down every hop and cancel work immediately once the budget expires.',
     },
   ],
   miniChecks: [
@@ -479,6 +606,11 @@ export async function getHomeFeed(userId: string) {
           title: 'Test fault isolation by killing Catalog Service',
           detail: 'Confirm existing orders can still be listed from `orders-service` while new orders return a clean 503 fallback.',
         },
+        {
+          id: 'ms-p1-m4',
+          title: 'Break it on purpose: Retry a POST /orders with an Idempotency-Key',
+          detail: 'Send the same `POST /orders` request twice with the same `Idempotency-Key` header and verify only one order is created while both requests share an `x-request-id` trace log.',
+        },
       ],
       architectureRules: [
         '`orders-service` must NEVER open `catalog.db` — communicate strictly over HTTP.',
@@ -515,6 +647,11 @@ export async function getHomeFeed(userId: string) {
           title: 'Make click tracking non-blocking with graceful failure',
           detail: 'If `analytics-service` is stopped or slow, `redirect-service` must still redirect the user instantly.',
         },
+        {
+          id: 'ms-p2-m4',
+          title: 'Break it on purpose: Inject a 2s Analytics lag & measure p95 redirect latency',
+          detail: 'Add a 2,000ms artificial delay inside `analytics-service` and prove `redirect-service` stays under 25ms p95 with circuit-breaker/timeout logs.',
+        },
       ],
       architectureRules: [
         'Run each service in its own process/container with independent `package.json` dependencies.',
@@ -531,6 +668,7 @@ export async function getHomeFeed(userId: string) {
     faultIsolation: 'Very High',
     costAtIdle: 'Fixed (High)',
     dataConsistency: 'Eventual',
+    typicalDatastore: 'Polyglot per service (Postgres, NoSQL, Redis, Search)',
     bestFor: 'Large multi-team orgs, independent scaling profiles, strict fault isolation',
   },
 };

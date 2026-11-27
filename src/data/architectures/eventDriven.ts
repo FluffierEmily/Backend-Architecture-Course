@@ -162,6 +162,46 @@ export const eventDrivenModule: ArchitectureModule = {
       keyTakeaway:
         'Use choreography for decoupled fan-out across domains, and switch to an explicit orchestrator when you need one clear place to see "where is this order stuck right now?"',
     },
+    {
+      id: 'eda-schema-evolution',
+      badge: 'Contract Governance',
+      title: 'Event Schema Evolution & Schema Registries',
+      summary:
+        'In Event-Driven systems, a single producer may feed 6 independent consumers running different code versions — renaming or removing an event field breaks downstream teams silently.',
+      bulletPoints: [
+        'Enforce backward-compatible, additive-only changes: add new optional fields with safe defaults; never rename, delete, or change the type of an existing field in place.',
+        'Use a Schema Registry (JSON Schema, Avro, or Protobuf) in CI to block breaking producer changes before deploy, and only introduce a new event version (`trip.completed.v2`) when semantics truly change.',
+      ],
+      keyTakeaway:
+        'Events live in queues and logs far longer than HTTP requests — treat every published event schema as a permanent contract.',
+    },
+    {
+      id: 'eda-outbox-skip-locked-cdc',
+      badge: 'Reliable Publishing',
+      title: 'Outbox Relay Concurrency (SKIP LOCKED) vs. Change Data Capture (CDC)',
+      summary:
+        'Writing to an `outbox_events` table solves the dual-write bug — next, you must publish those rows reliably even when running multiple relay workers at scale.',
+      bulletPoints: [
+        'Polling Relay (`FOR UPDATE SKIP LOCKED`): Simple to operate — multiple worker replicas claim disjoint batches of `PENDING` rows without stepping on each other.',
+        'Change Data Capture (CDC / Debezium): Streams committed outbox inserts directly from PostgreSQL’s write-ahead log (WAL) to Kafka with sub-second latency and zero polling load on your primary DB.',
+      ],
+      keyTakeaway:
+        'Start with a `FOR UPDATE SKIP LOCKED` polling relay; upgrade to WAL-based CDC (Debezium) when high throughput or ultra-low publish latency justifies extra infra.',
+    },
+    {
+      id: 'eda-vs-cqrs-event-sourcing',
+      badge: 'Clearing Up Confusion',
+      title: 'EDA vs. CQRS vs. Event Sourcing (Don’t Conflate Them!)',
+      summary:
+        'Beginners often assume adopting Event-Driven Architecture requires full Event Sourcing — it does not! They are three distinct patterns with very different complexity budgets.',
+      bulletPoints: [
+        'Event-Driven Architecture (EDA): Services still store normal mutable rows in Postgres and publish domain events so others can react asynchronously.',
+        'CQRS (Command Query Responsibility Segregation): Separates write tables from query-optimized read projections (e.g., syncing events into an Elasticsearch search index).',
+        'Event Sourcing: Replaces mutable database state entirely with an append-only event log as the sole source of truth — great for ledgers/audit domains, but painful for schema migrations and GDPR deletes.',
+      ],
+      keyTakeaway:
+        'Use EDA freely for decoupling and CQRS selectively for heavy read views, but treat full Event Sourcing as an advanced niche tool — not a default.',
+    },
   ],
   codeComparisons: [
     {
@@ -363,6 +403,76 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
         },
       ],
     },
+    {
+      id: 'eda-outbox-relay-locking',
+      title: 'Naive Outbox Poller vs. SKIP LOCKED Batch Relay & Versioned Envelope',
+      subtitle: 'Scaling an outbox relay without row locking causes duplicate publish storms and brittle payloads.',
+      context:
+        'SwiftRide runs 3 Outbox Relay worker containers for high availability, polling `outbox_events` every 200ms to publish `trip.completed` to Kafka.',
+      problemTitle: 'Pitfall: Uncoordinated pollers grabbing identical rows & raw payloads',
+      problemFile: 'trip-service/src/outboxRelay.ts',
+      problemCode: `export async function pollAndPublishOutbox() {
+  // Danger: Two relay replicas select the EXACT same pending rows!
+  const rows = await db.query(
+    \`SELECT id, event_type, payload FROM outbox_events
+     WHERE status = 'PENDING' LIMIT 50\`
+  );
+
+  for (const row of rows) {
+    // Unversioned raw payload breaks consumers when fields evolve
+    await broker.publish(row.event_type, row.payload);
+    await db.query(\`UPDATE outbox_events SET status = 'PUBLISHED' WHERE id = $1\`, [row.id]);
+  }
+}`,
+      refactoredTitle: 'Refactored: FOR UPDATE SKIP LOCKED + versioned event envelope',
+      refactoredFile: 'trip-service/src/outboxRelay.ts',
+      refactoredCode: `export async function pollAndPublishOutbox() {
+  await db.transaction(async (tx) => {
+    // SKIP LOCKED lets multiple relay replicas claim disjoint batches safely
+    const rows = await tx.query(
+      \`SELECT id, event_type, correlation_id, payload FROM outbox_events
+       WHERE status = 'PENDING'
+       ORDER BY created_at ASC LIMIT 50
+       FOR UPDATE SKIP LOCKED\`
+    );
+
+    for (const row of rows) {
+      // Standard schema-versioned envelope keeps consumer upgrades safe
+      await broker.publish(row.event_type, {
+        eventId: row.id,
+        schemaVersion: 2,
+        correlationId: row.correlation_id,
+        data: row.payload,
+      });
+      await tx.query(\`UPDATE outbox_events SET status = 'PUBLISHED' WHERE id = $1\`, [row.id]);
+    }
+  });
+}`,
+      annotations: [
+        {
+          id: 'eda-4-skip-locked',
+          label: '1. Duplicate Relay Contention',
+          problemLines: [2, 6],
+          refactoredLines: [2, 9],
+          severity: 'high',
+          problemExplanation:
+            'When 3 relay containers run concurrently, plain `SELECT ... WHERE status = PENDING` returns the exact same 50 rows to all 3 workers, tripling broker load and causing noisy duplicate deliveries.',
+          refactoredExplanation:
+            'Wrapping the poll in a transaction with `FOR UPDATE SKIP LOCKED` lets each worker lock and claim its own exclusive batch of rows while other workers smoothly skip ahead.',
+        },
+        {
+          id: 'eda-4-envelope',
+          label: '2. Unversioned Event Contracts',
+          problemLines: [8, 12],
+          refactoredLines: [11, 20],
+          severity: 'medium',
+          problemExplanation:
+            'Publishing raw unversioned payloads without `eventId`, `schemaVersion`, or `correlationId` makes tracing cross-service incidents and evolving fields safely nearly impossible.',
+          refactoredExplanation:
+            'Wrapping data in a standard versioned envelope enables consumer idempotency, distributed tracing, and backward-compatible schema evolution (or swap polling for Debezium CDC at high scale).',
+        },
+      ],
+    },
   ],
   bestPractices: [
     {
@@ -395,12 +505,22 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       detail:
         'Store large attachments (PDFs, images, exports) in S3/object storage and pass only the lightweight storage key inside the event message.',
     },
+    {
+      title: 'Evolve Event Schemas Backward-Compatibly (Additive-Only)',
+      detail:
+        'Add new optional fields instead of renaming or dropping live properties, and enforce schema compatibility checks in CI with a Schema Registry.',
+    },
   ],
   pitfalls: [
     {
       title: 'Event Replay Side-Effect Disaster',
       symptom: 'Replaying old events to rebuild an analytics table accidentally triggers the Email or Billing consumer for thousands of past customers.',
       fix: 'Use isolated consumer groups on durable logs (Kafka) or publish backfills to a dedicated non-live topic.',
+    },
+    {
+      title: 'Breaking Event Schema Changes Without Versioning',
+      symptom: 'Producer renames `fareCents` to `amountCents`, instantly crashing 4 downstream consumers and flooding the Dead Letter Queue.',
+      fix: 'Keep schema updates additive-only (publish both fields during transition) or bump to a new versioned topic (`trip.completed.v2`) with consumer migration windows.',
     },
     {
       title: 'Storing Sensitive PII in Immutable Event Logs',
@@ -480,6 +600,11 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
           title: 'Simulate a duplicate event & verify idempotency',
           detail: 'Publish the exact same `eventId` twice and prove `inventory.ts` only decrements stock once.',
         },
+        {
+          id: 'eda-p1-m4',
+          title: 'Break it on purpose: Evolve the schema & test tolerant consumers',
+          detail: 'Add a new optional `couponCode` field to `OrderPlaced` (`schemaVersion: 2`) and confirm older consumers continue processing safely without crashing.',
+        },
       ],
       architectureRules: [
         'Stop `emailer.ts`, place 3 orders, then restart `emailer.ts` — it must catch up and process the missed events.',
@@ -519,6 +644,11 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
           title: 'Add a Dead Letter Queue for bad payloads',
           detail: 'Send a malformed expense event and verify it moves to a DLQ after 3 retries instead of crashing the consumer.',
         },
+        {
+          id: 'eda-p2-m4',
+          title: 'Break it on purpose: Stop the broker for 30s during writes',
+          detail: 'Shut down RabbitMQ/Redis while submitting 5 new expenses, restart the broker, and verify the Outbox Relay delivers all 5 events with zero data loss.',
+        },
       ],
       architectureRules: [
         'Never publish to the broker inside the HTTP handler directly — always go through the Outbox table.',
@@ -535,6 +665,7 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
     faultIsolation: 'Very High',
     costAtIdle: 'Broker + Workers',
     dataConsistency: 'Eventual',
+    typicalDatastore: 'Durable Broker Log (Kafka/RabbitMQ) + per-consumer stores',
     bestFor: 'Real-time fan-out, decoupled multi-consumer workflows, burst-resilient pipelines',
   },
 };

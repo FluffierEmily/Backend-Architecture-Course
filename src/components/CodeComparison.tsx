@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  HelpCircle,
+} from 'lucide-react';
 import type { CodeAnnotation, CodeComparisonItem } from '../types/course';
 
 interface CodeComparisonProps {
@@ -28,16 +35,57 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
   const [selectedId, setSelectedId] = useState<string>(item.annotations[0]?.id ?? '');
   const [showAllExplainers, setShowAllExplainers] = useState(false);
   const [mobileTab, setMobileTab] = useState<ViewTab>('split');
+  const [quizMode, setQuizMode] = useState(false);
+  const [spottedIds, setSpottedIds] = useState<string[]>([]);
+  const [quizHint, setQuizHint] = useState<string | null>(null);
 
   const activeIndex = Math.max(
     0,
     item.annotations.findIndex((a) => a.id === selectedId)
   );
   const activeAnnotation = item.annotations[activeIndex] ?? item.annotations[0];
+  const allSpotted = spottedIds.length === item.annotations.length;
 
   const handleSelect = (annotationId: string) => {
     setSelectedId(annotationId);
     onInspect?.(item.id);
+  };
+
+  const toggleQuizMode = () => {
+    setQuizMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setShowAllExplainers(false);
+        setSpottedIds([]);
+        setQuizHint(null);
+      }
+      return next;
+    });
+  };
+
+  const handleLineClick = (
+    side: 'problem' | 'refactored',
+    lineNumber: number,
+    matchedAnnotation: CodeAnnotation | undefined
+  ) => {
+    if (quizMode && side === 'problem') {
+      if (matchedAnnotation) {
+        setSpottedIds((prev) =>
+          prev.includes(matchedAnnotation.id) ? prev : [...prev, matchedAnnotation.id]
+        );
+        setQuizHint(null);
+        handleSelect(matchedAnnotation.id);
+      } else {
+        setQuizHint(
+          `Line ${lineNumber} looks safe — try clicking where coupling, timeouts, retries, or side effects happen.`
+        );
+      }
+      return;
+    }
+
+    if (matchedAnnotation) {
+      handleSelect(matchedAnnotation.id);
+    }
   };
 
   const stepAnnotation = (delta: number) => {
@@ -52,6 +100,7 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
     const code = isProblem ? item.problemCode : item.refactoredCode;
     const title = isProblem ? item.problemTitle : item.refactoredTitle;
     const file = isProblem ? item.problemFile : item.refactoredFile;
+    const isQuizProblem = quizMode && isProblem;
 
     return (
       <div
@@ -105,14 +154,23 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                     lineNumber,
                     side
                   );
-                  const isActive =
-                    matchedAnnotation &&
-                    (showAllExplainers || matchedAnnotation.id === activeAnnotation?.id);
-                  const isOtherAnnotated = matchedAnnotation && !isActive;
+
+                  const isSpotted =
+                    matchedAnnotation && spottedIds.includes(matchedAnnotation.id);
+
+                  const isActive = isQuizProblem
+                    ? Boolean(isSpotted)
+                    : Boolean(
+                        matchedAnnotation &&
+                          (showAllExplainers || matchedAnnotation.id === activeAnnotation?.id)
+                      );
+                  const isOtherAnnotated = !isQuizProblem && Boolean(matchedAnnotation && !isActive);
 
                   const lineProps = getLineProps({ line });
 
-                  let highlightClasses = 'border-l-2 border-transparent hover:bg-white/[0.03]';
+                  let highlightClasses = isQuizProblem
+                    ? 'border-l-2 border-transparent hover:bg-indigo-500/10 cursor-pointer'
+                    : 'border-l-2 border-transparent hover:bg-white/[0.03]';
                   if (isActive) {
                     highlightClasses = isProblem
                       ? 'border-l-4 border-rose-400 bg-rose-500/15'
@@ -123,23 +181,27 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                       : 'border-l-2 border-emerald-500/35 bg-emerald-500/[0.04] hover:bg-emerald-500/10 cursor-pointer';
                   }
 
+                  const isInteractive = isQuizProblem || Boolean(matchedAnnotation);
+
                   return (
                     <div
                       key={lineNumber}
                       {...lineProps}
-                      onClick={() => {
-                        if (matchedAnnotation) handleSelect(matchedAnnotation.id);
-                      }}
-                      role={matchedAnnotation ? 'button' : undefined}
-                      tabIndex={matchedAnnotation ? 0 : undefined}
+                      onClick={() => handleLineClick(side, lineNumber, matchedAnnotation)}
+                      role={isInteractive ? 'button' : undefined}
+                      tabIndex={isInteractive ? 0 : undefined}
                       onKeyDown={(e) => {
-                        if (matchedAnnotation && (e.key === 'Enter' || e.key === ' ')) {
+                        if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
                           e.preventDefault();
-                          handleSelect(matchedAnnotation.id);
+                          handleLineClick(side, lineNumber, matchedAnnotation);
                         }
                       }}
                       title={
-                        matchedAnnotation ? `Inspect: ${matchedAnnotation.label}` : undefined
+                        isQuizProblem
+                          ? `Check line ${lineNumber}`
+                          : matchedAnnotation
+                          ? `Inspect: ${matchedAnnotation.label}`
+                          : undefined
                       }
                       className={`flex px-3.5 py-0.5 transition-colors ${highlightClasses}`}
                     >
@@ -160,7 +222,7 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
         </div>
 
         {/* Synced Single Explainer Footer */}
-        {!showAllExplainers && activeAnnotation && (
+        {!quizMode && !showAllExplainers && activeAnnotation && (
           <div
             className={`mt-auto border-t px-5 py-4 text-sm ${
               isProblem
@@ -205,16 +267,33 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
             {item.subtitle}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setShowAllExplainers((prev) => !prev);
-            onInspect?.(item.id);
-          }}
-          className="shrink-0 self-start text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
-        >
-          {showAllExplainers ? 'Focus One Highlight' : 'View All Explainers'}
-        </button>
+        <div className="flex shrink-0 flex-wrap items-center gap-4 self-start">
+          <button
+            type="button"
+            onClick={toggleQuizMode}
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold transition ${
+              quizMode
+                ? 'text-indigo-600 underline decoration-indigo-500/50 underline-offset-4 dark:text-indigo-300'
+                : 'text-slate-500 underline decoration-slate-400/50 underline-offset-4 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300'
+            }`}
+          >
+            <HelpCircle className="h-3.5 w-3.5" />
+            {quizMode ? 'Exit Quiz Mode' : 'Quiz Me First'}
+          </button>
+
+          {!quizMode && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAllExplainers((prev) => !prev);
+                onInspect?.(item.id);
+              }}
+              className="text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
+            >
+              {showAllExplainers ? 'Focus One Highlight' : 'View All Explainers'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Scenario Context */}
@@ -223,94 +302,185 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
         {item.context}
       </p>
 
-      {/* Quiet Highlight Selector Bar + Step Arrows + Mobile Toggle */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-slate-700/80">
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="tablist"
-          aria-label="Code highlights"
-        >
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Focus:
-          </span>
-          {item.annotations.map((ann) => {
-            const isSelected = !showAllExplainers && ann.id === activeAnnotation?.id;
-            return (
-              <button
-                key={ann.id}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                onClick={() => {
-                  setShowAllExplainers(false);
-                  handleSelect(ann.id);
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-stone-100 text-slate-600 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
-                }`}
-              >
-                {ann.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Quiet Highlight Selector Bar (Hidden during Quiz Mode so pitfalls aren't spoiled) */}
+      {!quizMode && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-slate-700/80">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="tablist"
+            aria-label="Code highlights"
+          >
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Focus:
+            </span>
+            {item.annotations.map((ann) => {
+              const isSelected = !showAllExplainers && ann.id === activeAnnotation?.id;
+              return (
+                <button
+                  key={ann.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    setShowAllExplainers(false);
+                    handleSelect(ann.id);
+                  }}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-stone-100 text-slate-600 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {ann.label}
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="flex items-center gap-2">
-          {item.annotations.length > 1 && !showAllExplainers && (
-            <div className="inline-flex items-center gap-1">
-              <button
-                type="button"
-                aria-label="Previous highlight"
-                onClick={() => stepAnnotation(-1)}
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Next highlight"
-                onClick={() => stepAnnotation(1)}
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+          <div className="flex items-center gap-2">
+            {item.annotations.length > 1 && !showAllExplainers && (
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Previous highlight"
+                  onClick={() => stepAnnotation(-1)}
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next highlight"
+                  onClick={() => stepAnnotation(1)}
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Mobile pane switcher */}
+            <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-0.5 text-xs lg:hidden dark:border-slate-700 dark:bg-[#0f172a]">
+              {(['split', 'problem', 'refactored'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setMobileTab(tab)}
+                  className={`rounded-lg px-2.5 py-1 font-medium capitalize transition ${
+                    mobileTab === tab
+                      ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-800 dark:text-white'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {tab === 'problem' ? 'Problematic' : tab}
+                </button>
+              ))}
             </div>
-          )}
-
-          {/* Mobile pane switcher */}
-          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-0.5 text-xs lg:hidden dark:border-slate-700 dark:bg-[#0f172a]">
-            {(['split', 'problem', 'refactored'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setMobileTab(tab)}
-                className={`rounded-lg px-2.5 py-1 font-medium capitalize transition ${
-                  mobileTab === tab
-                    ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-800 dark:text-white'
-                    : 'text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                {tab === 'problem' ? 'Problematic' : tab}
-              </button>
-            ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Code Panes */}
+      {/* Code Panes (Or Problem + Spot-the-Pitfall Panel in Quiz Mode) */}
       <div
         className={`grid gap-5 ${
-          mobileTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
+          quizMode || mobileTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
         }`}
       >
-        {(mobileTab === 'split' || mobileTab === 'problem') && renderCodePane('problem')}
-        {(mobileTab === 'split' || mobileTab === 'refactored') && renderCodePane('refactored')}
+        {(quizMode || mobileTab === 'split' || mobileTab === 'problem') &&
+          renderCodePane('problem')}
+
+        {quizMode ? (
+          <div className="flex flex-col justify-between rounded-2xl border border-stone-200 bg-stone-50 p-6 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+            <div>
+              <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  Spot the Pitfall · Active Recall
+                </span>
+                <span className="font-mono text-slate-600 dark:text-slate-300">
+                  Spotted {spottedIds.length} of {item.annotations.length}
+                </span>
+              </div>
+
+              <h4 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
+                {allSpotted
+                  ? 'You spotted every pitfall!'
+                  : 'Click the risky lines in the Problematic code'}
+              </h4>
+              <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {allSpotted
+                  ? 'Reveal the Refactored code to compare how each issue is fixed cleanly.'
+                  : 'Tap any line on the left that looks risky before peeking at the refactored solution.'}
+              </p>
+
+              {/* Progress Track */}
+              <div className="mt-4 flex gap-1.5" aria-hidden="true">
+                {item.annotations.map((ann) => (
+                  <div
+                    key={ann.id}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                      spottedIds.includes(ann.id)
+                        ? 'bg-emerald-500'
+                        : 'bg-stone-200 dark:bg-slate-700/80'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {quizHint && (
+                <p className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3.5 py-2.5 text-xs leading-5 text-amber-900 dark:text-amber-200">
+                  {quizHint}
+                </p>
+              )}
+
+              {/* Revealed Explanations for Spotted Pitfalls */}
+              {spottedIds.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {item.annotations
+                    .filter((a) => spottedIds.includes(a.id))
+                    .map((ann) => (
+                      <div
+                        key={ann.id}
+                        className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-3.5 text-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                          <span className="inline-flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Spotted: {ann.label}
+                          </span>
+                          <span className="font-mono">
+                            L{ann.problemLines[0]}–{ann.problemLines[1]}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs leading-6 text-slate-700 dark:text-slate-200">
+                          {ann.problemExplanation}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 border-t border-stone-200 pt-4 dark:border-slate-700/80">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuizMode(false);
+                  onInspect?.(item.id);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500"
+              >
+                <Eye className="h-4 w-4" />
+                Reveal Refactored Code
+              </button>
+            </div>
+          </div>
+        ) : (
+          (mobileTab === 'split' || mobileTab === 'refactored') && renderCodePane('refactored')
+        )}
       </div>
 
       {/* All Explainers Expanded Comparison */}
-      {showAllExplainers && (
+      {!quizMode && showAllExplainers && (
         <div className="mt-5 space-y-3.5">
           {item.annotations.map((ann) => (
             <div

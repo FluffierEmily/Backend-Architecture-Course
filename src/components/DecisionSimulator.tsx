@@ -113,7 +113,7 @@ export function DecisionSimulator({
               </button>
 
               {jumpOpen && (
-                <div className="absolute left-0 z-20 mt-1.5 w-80 rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
+                <div className="absolute left-0 z-20 mt-1.5 max-h-80 w-80 overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
                   {SIMULATOR_SCENARIOS.map((s, idx) => {
                     const savedChoice = completedChoices[s.id];
                     const hitBestFit = savedChoice === s.bestFit;
@@ -389,6 +389,15 @@ export function DecisionSimulator({
                 <p className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-3.5 text-xs leading-5 text-emerald-900 dark:text-emerald-200">
                   <strong>Recommended Best Fit:</strong> {bestFitModule.name} —{' '}
                   {bestFitOutcome.headline}
+                </p>
+              )}
+
+              {scenario.hybridNote && (
+                <p className="mt-3 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.08] p-3.5 text-xs leading-5 text-slate-800 dark:text-slate-100">
+                  <strong className="text-indigo-700 dark:text-indigo-300">
+                    Pragmatic Hybrid Pairing:{' '}
+                  </strong>
+                  {scenario.hybridNote}
                 </p>
               )}
             </div>

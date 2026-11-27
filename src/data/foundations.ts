@@ -9,9 +9,9 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     realWorldAnalogy:
       'Like ordering at a coffee counter and standing there until the barista hands you your cup.',
     howItWorks:
-      'Synchronous HTTP (REST/JSON) is simple, predictable, and easy to debug. Every backend starts here — trouble only begins when one slow step forces the user to wait too long or blocks other requests.',
+      'Synchronous HTTP (REST/JSON) is simple, predictable, and easy to debug. For production scale, validate payloads at the boundary, cap list page sizes using cursor/keyset pagination (instead of slow `OFFSET 100000`), and accept an `Idempotency-Key` header on mutating `POST` requests (like checkout) so mobile retries never double-charge.',
     beginnerWatchOut:
-      'Doing slow work (like generating a PDF or resizing a video) synchronously inside an HTTP request causes timeouts and makes your server run out of capacity fast.',
+      'Doing slow work (like generating a PDF or resizing a video) synchronously inside an HTTP request causes timeouts — and auto-retrying a `POST` request without an `Idempotency-Key` creates duplicate orders.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
   },
   {
@@ -87,7 +87,7 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     realWorldAnalogy:
       'Keeping the most popular menu items written on a chalkboard behind the register instead of walking to the storeroom every time someone asks.',
     howItWorks:
-      'With the Cache-Aside pattern, your backend checks Redis first; on a cache miss, it queries the database, saves the result in Redis with a TTL (expiration time), and returns it. CDNs cache static assets and public GET responses geographically close to users.',
+      'With the Cache-Aside pattern, your backend checks Redis first; on a cache miss, it queries the database, saves the result in Redis with a TTL (expiration time), and returns it. CDNs and browsers honor HTTP caching headers (`Cache-Control`, `ETag`, `stale-while-revalidate`) to serve public GET responses geographically close to users.',
     beginnerWatchOut:
       'Watch for Cache Stampedes (a popular key expires and 500 requests hit the DB at once — add small random TTL jitter), stale data after writes, and NEVER cache private user data in a shared public CDN key!',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
@@ -126,9 +126,9 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     realWorldAnalogy:
       'A concert checks your ticket at the front gate (edge auth), gives staff backstage badges for restricted rooms (service auth), and verifies sealed VIP deliveries (webhook signatures).',
     howItWorks:
-      'Monoliths often use server-side sessions (easy instant logout via Redis/DB). Microservices and Serverless favor stateless signed JWTs verified at the API Gateway so every function doesn’t hit an auth DB — trading instant revocation for speed. Inside a distributed backend, verify internal callers with mTLS or signed service tokens, load API keys from a Secrets Manager (never Git), and verify third-party webhooks using HMAC signatures + timestamp replay checks.',
+      'Separate Authentication ("who are you?") from Authorization ("can you touch this record?"). Monoliths often use server-side sessions (easy instant logout via Redis/DB), while Microservices and Serverless favor short-lived signed JWTs verified at the API Gateway paired with RBAC/ABAC permission checks on every resource query. Verify internal callers with mTLS or service tokens, load keys from a Secrets Manager (never Git), and verify external webhooks via HMAC signatures + timestamp replay checks.',
     beginnerWatchOut:
-      'Long-lived JWTs cannot be easily revoked if stolen — pair short-lived access tokens (5–15 min) with rotatable refresh tokens. On public webhooks (Stripe, GitHub), skipping HMAC verification lets anyone forge "payment succeeded" events.',
+      'Checking only "is the user logged in?" without verifying resource ownership causes IDOR vulnerabilities (User A reading User B’s invoice by changing `/invoices/42` to `/invoices/43`). On public webhooks, skipping HMAC verification lets anyone forge payment events.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
   },
   {
@@ -143,6 +143,97 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Renaming or dropping a live column in a single deployment immediately breaks every still-running server container before the rollout finishes, causing instant 500 errors.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+  },
+  {
+    id: 'testing-strategies',
+    name: 'Testing Strategies by Architecture',
+    icon: 'flask-conical',
+    oneLiner: 'How testing shifts from fast in-process suites to contract tests and failure drills as systems become distributed.',
+    realWorldAnalogy:
+      'Testing a bicycle takes one ride down the block; testing an airline means inspecting each engine separately AND verifying the cockpit instruments agree on the exact same signals.',
+    howItWorks:
+      'In a Modular Monolith, fast in-process integration tests against a real local Postgres/SQLite container verify whole workflows in seconds. In Microservices and Event-Driven systems, spinning up 15 services locally is slow and flaky — teams rely on Consumer-Driven Contract Tests (OpenAPI / Pact / JSON Schema) to guarantee producer and consumer payloads match, paired with focused unit tests on pure domain logic.',
+    beginnerWatchOut:
+      'Mocking every network call and database query makes tests pass with 100% green checkmarks while hiding real JSON serialization bugs, broken SQL queries, missing timeouts, and duplicate-message crashes!',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+  },
+  {
+    id: 'concurrency-locking',
+    name: 'Concurrency Control & Race Conditions',
+    icon: 'key-round',
+    oneLiner: 'Stopping two simultaneous users from booking the last seat or double-spending the same balance.',
+    realWorldAnalogy:
+      'Two travel agents reading "1 seat left" on a whiteboard at the same time and both selling it — unless the booking desk locks the row or checks the version number before writing.',
+    howItWorks:
+      'Idempotency stops retries of the SAME request, but Concurrency Control handles TWO DIFFERENT users colliding on the same record. Prefer atomic conditional SQL updates (`UPDATE stock SET qty = qty - 1 WHERE id = $1 AND qty >= 1`), Optimistic Locking (include `WHERE version = $expected` and retry on conflict), or Pessimistic Locking (`SELECT ... FOR UPDATE`) for short high-contention rows.',
+    beginnerWatchOut:
+      'Reading a balance in JavaScript (`if (balance >= 50)`), doing work, and then writing `balance - 50` is a classic read-modify-write race condition! And avoid Redis distributed locks unless you truly need cross-system coordination — clock drift and GC pauses can let two workers hold the "lock" simultaneously.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+  },
+  {
+    id: 'realtime-push',
+    name: 'Real-Time Delivery: Polling, SSE & WebSockets',
+    icon: 'radio',
+    oneLiner: 'How clients get updates after a `202 Accepted` response — or stream live maps, chat, and AI tokens.',
+    realWorldAnalogy:
+      'Short polling is repeatedly asking "is dinner ready?"; SSE is a one-way kitchen pager that buzzes you when ready; WebSockets is an open two-way phone call.',
+    howItWorks:
+      'Match complexity to your update frequency: Short Polling (simple `GET /jobs/:id` every 2s) works great for PDF exports; Server-Sent Events (SSE) streams one-way server updates over plain HTTP (ideal for LLM token streaming & live notifications); WebSockets enable full two-way low-latency traffic (chat, live collaboration); Webhooks push server-to-server events to external partners.',
+    beginnerWatchOut:
+      'Persistent WebSocket connections are stateful! When you scale to 4 backend servers, User A on Server 1 cannot message User B on Server 2 unless servers broadcast via Redis Pub/Sub or a broker — and standard stateless Serverless functions cannot hold long-lived WebSockets directly without a managed gateway.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+  },
+  {
+    id: 'db-choice-scaling',
+    name: 'Choosing & Scaling Databases (SQL, NoSQL & Lag)',
+    icon: 'hard-drive',
+    oneLiner: 'Why databases bottleneck before app servers — and how to pick and scale storage without premature sharding.',
+    realWorldAnalogy:
+      'A well-organized filing cabinet (Postgres) handles almost any office until you need a specialized index desk (Search), a high-speed ticker tape (Time-Series), or separate branch offices (Sharding).',
+    howItWorks:
+      'Start with relational SQL (PostgreSQL) for strong ACID consistency and flexible queries; adopt specialized stores (Polyglot Persistence: Redis for KV/cache, OpenSearch for full-text search, DynamoDB/Cassandra for massive predictable key lookups) only when access patterns demand it. Scale in order: fix indexes & N+1 queries → scale vertically + add caching → add Read Replicas → partition large tables → shard only as a last resort.',
+    beginnerWatchOut:
+      'Read Replicas lag behind the primary by milliseconds to seconds! If a user saves their profile and immediately reloads from a replica, they may see stale data ("read-your-own-writes" bug) unless post-write reads route to the primary. Under CAP trade-offs during a network split, distributed stores must choose between strict consistency and accepting writes.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+  },
+  {
+    id: 'safe-deployments',
+    name: 'Safe Deployments & Feature Flags',
+    icon: 'rocket',
+    oneLiner: 'Releasing new code gradually with instant rollback — and separating code deployment from feature launch.',
+    realWorldAnalogy:
+      'Opening a new restaurant menu to 5% of tables first (Canary) or keeping the old kitchen warm until the new kitchen proves steady (Blue-Green).',
+    howItWorks:
+      'Rolling deploys replace containers a few at a time; Blue-Green deploys stand up a full new environment and flip load-balancer traffic instantly for fast rollback; Canary releases route 1% → 10% → 100% of live traffic while watching error/p99 metrics. Feature Flags decouple deployment (pushing safe dark code to production) from release (toggling a feature on for beta users without redeploying).',
+    beginnerWatchOut:
+      'Remember that during Rolling and Canary deploys, old and new versions of your backend run simultaneously — so database schemas and internal JSON/event payloads must stay backward-compatible across at least two releases!',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+  },
+  {
+    id: 'multi-tenancy',
+    name: 'Multi-Tenancy & Tenant Isolation (B2B SaaS)',
+    icon: 'building',
+    oneLiner: 'Safely serving hundreds of customer organizations on shared infrastructure without cross-tenant leaks or noisy neighbors.',
+    realWorldAnalogy:
+      'Apartments in one building (shared DB + `tenant_id`), separate wings with locked doors (schema-per-tenant), or standalone houses for VIPs (database-per-tenant).',
+    howItWorks:
+      'Most SaaS apps start with a Shared Database + `tenant_id` column enforced by PostgreSQL Row-Level Security (RLS) so a forgotten `WHERE` clause cannot leak another company’s data. Regulated enterprise tiers can graduate to Schema-per-Tenant or dedicated Database-per-Tenant ("silo") isolation. Always scope rate limits, queue fairness, and Redis cache keys (`tenant:{id}:projects`) per tenant.',
+    beginnerWatchOut:
+      'One enterprise customer running a massive bulk import can starve every small customer on shared queues or DB pools ("noisy neighbor" problem). Apply per-tenant rate limits and move heavy exports to isolated workers.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+  },
+  {
+    id: 'availability-dr',
+    name: 'High Availability, SLOs & Disaster Recovery',
+    icon: 'heart-pulse',
+    oneLiner: 'Designing past single points of failure and quantifying acceptable downtime and data loss.',
+    realWorldAnalogy:
+      'Having a spare tire and roadside assistance (Multi-AZ failover) plus cloud-backed photos (off-site backups) — sized to how fast you actually need to be back on the road.',
+    howItWorks:
+      'Eliminate single points of failure by running 2+ stateless app replicas and Multi-AZ managed databases with automatic failover before ever considering costly Multi-Region setups. Define SLOs (e.g., 99.9% = ~43 min downtime/month) backed by an Error Budget, and set RPO (max acceptable data loss, e.g., 5 min of writes) and RTO (max acceptable recovery time, e.g., 30 min) verified by real restore drills.',
+    beginnerWatchOut:
+      'Availability compounds downward across synchronous chains! Calling 5 sequential microservices that are each 99.9% reliable drops your combined endpoint availability to 99.9%^5 ≈ 99.5% (~3.6 hours of downtime/month) unless you decouple or degrade gracefully. And an untested database backup is not a backup.',
+    relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
   },
 ];
 
@@ -216,5 +307,75 @@ export const BEGINNER_GLOSSARY = [
     term: 'Claim Check Pattern',
     meaning:
       'Uploading large files (PDFs, videos) to object storage like S3 and sending only the small file URI/key through a message broker.',
+  },
+  {
+    term: 'Contract Testing',
+    meaning:
+      'Automated CI tests verifying that a service or event producer’s actual JSON payloads match what its downstream consumers expect — without running all services together.',
+  },
+  {
+    term: 'Deadline Propagation',
+    meaning:
+      'Passing a request’s remaining timeout budget across downstream microservice calls so Service C stops wasted work if the user already timed out at Service A.',
+  },
+  {
+    term: 'Optimistic Locking',
+    meaning:
+      'Preventing lost concurrent updates by including a `version` column in your SQL `UPDATE ... WHERE version = $old` and retrying or rejecting if another writer modified the row first.',
+  },
+  {
+    term: 'Race Condition',
+    meaning:
+      'A bug where two concurrent requests read the same state (e.g., "1 seat left") and both write updates simultaneously, corrupting balances or double-booking inventory.',
+  },
+  {
+    term: 'SSE (Server-Sent Events)',
+    meaning:
+      'A lightweight, one-way HTTP stream allowing a server to push real-time updates (like LLM tokens or job progress) to a browser without full WebSocket complexity.',
+  },
+  {
+    term: 'WebSockets',
+    meaning:
+      'A persistent, two-way TCP connection between client and server for low-latency real-time features like chat or collaborative editing — requires pub/sub fan-out across multiple servers.',
+  },
+  {
+    term: 'Replication Lag',
+    meaning:
+      'The brief delay between writing data to a primary database and that change appearing on a read replica — can cause stale "read-your-own-writes" bugs if not routed carefully.',
+  },
+  {
+    term: 'Sharding',
+    meaning:
+      'Horizontally splitting one giant database across multiple independent servers by a shard key (e.g., `tenantId`) — powerful for extreme scale, but breaks cross-shard joins and transactions.',
+  },
+  {
+    term: 'Bounded Context',
+    meaning:
+      'A Domain-Driven Design boundary inside which a business term (like "Account" or "Order") has one clear meaning, data model, and owning team or module.',
+  },
+  {
+    term: 'Conway’s Law',
+    meaning:
+      'The observation that software architectures mirror the communication structure of the teams that build them — align service boundaries with autonomous team boundaries.',
+  },
+  {
+    term: 'CDC (Change Data Capture)',
+    meaning:
+      'Streaming committed database changes straight from the database’s write-ahead log (e.g., via Debezium) into an event broker or new microservice database without polling.',
+  },
+  {
+    term: 'CQRS & Event Sourcing',
+    meaning:
+      'CQRS separates write models from query-optimized read models; Event Sourcing stores all state strictly as an append-only log of events. Neither is required just to use Event-Driven Architecture.',
+  },
+  {
+    term: 'Canary / Blue-Green Deploy',
+    meaning:
+      'Low-risk release patterns: Canary shifts a small % of traffic (1% → 10% → 100%) to verify metrics; Blue-Green flips all traffic between two identical environments for instant rollback.',
+  },
+  {
+    term: 'RPO & RTO',
+    meaning:
+      'Disaster recovery targets: RPO (Recovery Point Objective) is the maximum acceptable data loss (e.g., 5 minutes); RTO (Recovery Time Objective) is the maximum acceptable downtime to restore.',
   },
 ];

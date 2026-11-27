@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ALL_PRACTICE_PROJECTS, ARCHITECTURE_MODULES } from '../data';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
-import type { ArchitectureId } from '../types/course';
+import type { ProjectArchitectureId } from '../types/course';
 
 interface ProjectsPageProps {
   completedMilestones: string[];
@@ -12,7 +12,7 @@ export function ProjectsPage({
   completedMilestones,
   onToggleMilestone,
 }: ProjectsPageProps) {
-  const [archFilter, setArchFilter] = useState<'all' | ArchitectureId>('all');
+  const [archFilter, setArchFilter] = useState<'all' | ProjectArchitectureId>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'starter' | 'stretch'>('all');
 
   const filtered = ALL_PRACTICE_PROJECTS.filter((p) => {
@@ -85,6 +85,19 @@ export function ProjectsPage({
                 </button>
               );
             })}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={archFilter === 'hybrid'}
+              onClick={() => setArchFilter('hybrid')}
+              className={`border-b-2 pb-3 text-sm font-semibold transition ${
+                archFilter === 'hybrid'
+                  ? 'border-indigo-500 text-slate-900 dark:text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              Hybrid / Evolution
+            </button>
           </div>
 
           <div className="flex items-center gap-3 pb-3 text-xs">

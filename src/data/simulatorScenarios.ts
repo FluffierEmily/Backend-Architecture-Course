@@ -601,6 +601,8 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
       timeToMarket: 'Stop month-end checkout outages before next billing cycle',
     },
     bestFit: 'serverless',
+    hybridNote:
+      'Real-world hybrid: Keep Auth, Billing, and Ledger inside the Modular Monolith while extracting ONLY the month-end PDF worker slice into Serverless + S3 presigned URLs.',
     outcomes: {
       serverless: {
         verdict: 'best-fit',
@@ -674,6 +676,8 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
       timeToMarket: 'Stop partner hiccups from breaking Checkout within 6 weeks',
     },
     bestFit: 'event-driven',
+    hybridNote:
+      'Real-world hybrid: Keep synchronous Payment confirmation fast inside Checkout (with an `Idempotency-Key` + Outbox), and fan out all 5 partner integrations over the Event-Driven broker.',
     outcomes: {
       'event-driven': {
         verdict: 'best-fit',
@@ -729,6 +733,229 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
           'Without a durable event broker & standard envelope, fan-out tracking stayed messy.',
         ],
         scores: { devSpeed: 3, opsSimplicity: 3, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
+      },
+    },
+  },
+  {
+    id: 'sim-ai-doc-assistant',
+    title: 'AI Legal Document Ingestion & Streaming Q&A',
+    company: 'CiteFlow',
+    brief:
+      'Law firms upload 200-page contracts that must be OCR’d, chunked, PII-redacted, embedded (subject to strict LLM provider RPM rate limits), and indexed into vector search — while lawyers also chat with 15-second token-streamed answers.',
+    constraints: {
+      teamSize: '12 backend & AI engineers',
+      trafficPattern: 'Huge batch uploads (500 PDFs at once) + steady daytime SSE chat',
+      budgetOps: 'Comfortable running managed queues/brokers & vector storage',
+      latencyConsistency: 'Uploads return 202 fast; chat streams tokens over SSE in <1s TTFT',
+      timeToMarket: 'Need resilient retries & backpressure against LLM 429 rate limits',
+    },
+    bestFit: 'event-driven',
+    hybridNote:
+      'Real-world hybrid: Power the multi-stage ingestion pipeline (OCR → Redact → Embed → Index) with an Event-Driven broker + rate-limited workers, paired with a thin streaming web service (SSE) for live LLM chat.',
+    outcomes: {
+      'event-driven': {
+        verdict: 'best-fit',
+        headline: 'Built for multi-stage AI pipelines, backpressure, and LLM rate-limit retries!',
+        sixMonthsLater:
+          'Uploaded PDFs go straight to S3 (Claim Check pattern) and trigger staged events (`DocumentUploaded` → `ChunksReady` → `EmbeddingsIndexed`). Rate-limited embedding consumers respect LLM provider quotas gracefully without dropping a single contract.',
+        whatWorked: [
+          'Backpressure & bounded concurrency prevented 429 rate-limit meltdowns during 500-PDF bulk uploads.',
+          'Dead Letter Queues isolated corrupted scanned PDFs without stalling other firms.',
+          'Adding a new Citation Audit consumer required zero changes to upload intake.',
+        ],
+        whatHurt: [
+          'Still needed a lightweight HTTP/SSE service for interactive chat streaming and job-status updates.',
+        ],
+        scores: { devSpeed: 4, opsSimplicity: 3, scaling: 5, costEfficiency: 4, faultIsolation: 5 },
+      },
+      'modular-monolith': {
+        verdict: 'risky',
+        headline: 'Inline OCR & embedding loops starve live SSE chat streams.',
+        sixMonthsLater:
+          'Running heavy PDF parsing and 40-second LLM retry loops inside the same web server exhausted connections and broke interactive lawyer chat every time a firm uploaded a case bundle.',
+        whatWorked: [
+          'Simple auth, billing, and SSE chat endpoints initially.',
+        ],
+        whatHurt: [
+          'Long-running embedding jobs blocked event loops and crashed containers during bulk uploads.',
+          'No natural backpressure when LLM APIs returned 429 rate limits.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 4, scaling: 2, costEfficiency: 3, faultIsolation: 2 },
+      },
+      serverless: {
+        verdict: 'viable',
+        headline: 'Great for OCR triggers, but long LLM streaming & uncontrolled burst fan-out bite back.',
+        sixMonthsLater:
+          'Serverless OCR functions scaled fast, yet 500 parallel functions immediately slammed the LLM embedding API’s RPM limit, and holding 30-second SSE chat streams open racked up GB-second billing.',
+        whatWorked: [
+          'Zero idle cost for overnight batch uploads.',
+        ],
+        whatHurt: [
+          'Unthrottled parallel bursts triggered constant LLM 429 errors without strict queue concurrency caps.',
+          'Paying for idle waiting during slow 20–40s LLM streaming calls got expensive.',
+        ],
+        scores: { devSpeed: 4, opsSimplicity: 4, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
+      },
+      microservices: {
+        verdict: 'viable',
+        headline: 'Good isolation, though synchronous RPC chains break under slow LLM stages.',
+        sixMonthsLater:
+          'Splitting OCR, Redaction, and Indexing into sync HTTP microservices caused cascading 30-second timeouts until the team introduced an async Event-Driven backbone between stages.',
+        whatWorked: [
+          'Python OCR/ML workers stayed cleanly separated from TypeScript APIs.',
+        ],
+        whatHurt: [
+          'Synchronous HTTP calls between 4 slow AI stages timed out constantly.',
+        ],
+        scores: { devSpeed: 2, opsSimplicity: 2, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
+      },
+    },
+  },
+  {
+    id: 'sim-multitenant-saas',
+    title: 'Multi-Tenant B2B Analytics SaaS with Noisy Neighbors',
+    company: 'MetricForge',
+    brief:
+      'A 14-person team serves 1,200 B2B customer organizations with dashboards, role permissions, billing, and scheduled CSV/report exports. Strict tenant isolation is mandatory, and 3 giant enterprise tenants occasionally trigger massive reporting queries.',
+    constraints: {
+      teamSize: '14 engineers (TypeScript + PostgreSQL)',
+      trafficPattern: 'Steady 120 req/sec business-hours load + occasional big tenant reports',
+      budgetOps: 'Lean team — wants strong security without Kubernetes sprawl',
+      latencyConsistency: 'Strict tenant data isolation (zero IDOR leaks) & ACID billing',
+      timeToMarket: 'Ship enterprise RBAC & SOC2 audit trails this quarter',
+    },
+    bestFit: 'modular-monolith',
+    hybridNote:
+      'Real-world hybrid: Keep core multi-tenant CRUD, RBAC, and Billing in a Modular Monolith backed by Postgres Row-Level Security (RLS) + a Read Replica, and offload heavy enterprise CSV exports to an isolated worker queue or Serverless function.',
+    outcomes: {
+      'modular-monolith': {
+        verdict: 'best-fit',
+        headline: 'Cleanest path to strict Postgres RLS, fast feature shipping, and simple SOC2 audits!',
+        sixMonthsLater:
+          'MetricForge kept Users, RBAC, Billing, and Dashboards in one clean Modular Monolith with Postgres Row-Level Security enforcing `tenant_id` on every query. Routing heavy enterprise reports to a read replica + separate worker process eliminated noisy-neighbor slowdowns completely.',
+        whatWorked: [
+          'Single Postgres RLS policy + tenant-scoped Redis keys eliminated cross-tenant IDOR bugs.',
+          '14 engineers shipped SOC2 audit logging and enterprise RBAC ahead of schedule.',
+          'Read replica + background worker isolated the 3 giant tenants without rewriting the app.',
+        ],
+        whatHurt: [
+          'Had to enforce cursor pagination and per-tenant rate limits so giant exports couldn’t hog workers.',
+        ],
+        scores: { devSpeed: 5, opsSimplicity: 5, scaling: 4, costEfficiency: 5, faultIsolation: 4 },
+      },
+      microservices: {
+        verdict: 'over-engineered',
+        headline: 'Duplicating RBAC & tenant context across 7 databases slowed SOC2 compliance.',
+        sixMonthsLater:
+          'Propagating tenant roles, permissions, and audit trails across 7 separate services created subtle authorization drift and stretched a 14-person team thin managing cluster ops.',
+        whatWorked: [
+          'Isolated the heavy reporting service onto its own compute.',
+        ],
+        whatHurt: [
+          'Every service had to re-verify tenant permissions and sync org memberships.',
+          'High ops burden for a lean 14-engineer SaaS team.',
+        ],
+        scores: { devSpeed: 2, opsSimplicity: 2, scaling: 5, costEfficiency: 2, faultIsolation: 5 },
+      },
+      serverless: {
+        verdict: 'viable',
+        headline: 'Great for the enterprise CSV export slice, awkward for core relational RLS CRUD.',
+        sixMonthsLater:
+          'Setting per-request Postgres RLS session variables safely through shared serverless connection poolers required careful transaction scoping, and steady daytime load ran cheaper on containers.',
+        whatWorked: [
+          'Offloaded spiky enterprise CSV exports cleanly.',
+        ],
+        whatHurt: [
+          'Transaction-mode connection pooling + Postgres session RLS needed extra care.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 4, scaling: 4, costEfficiency: 4, faultIsolation: 4 },
+      },
+      'event-driven': {
+        verdict: 'over-engineered',
+        headline: 'Eventual consistency confused admins updating RBAC roles and permissions.',
+        sixMonthsLater:
+          'When an IT admin revoked a terminated employee’s access, async permission propagation delays created immediate SOC2 audit red flags.',
+        whatWorked: [
+          'Nice append-only stream for compliance audit logs.',
+        ],
+        whatHurt: [
+          'Permission & billing changes needed immediate ACID reads, not eventual consistency.',
+        ],
+        scores: { devSpeed: 2, opsSimplicity: 2, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
+      },
+    },
+  },
+  {
+    id: 'sim-realtime-collab',
+    title: 'Real-Time Multiplayer Whiteboard & AI Diagramming Suite',
+    company: 'SyncCanvas',
+    brief:
+      '50 engineers across 6 squads run a global Figma-style collaborative whiteboard. Hundreds of users edit the same board live over persistent WebSockets, while separate teams build Python AI diagram generation, enterprise SSO/billing, and high-res PNG/PDF exports.',
+    constraints: {
+      teamSize: '50 engineers across 6 squads (TypeScript, Rust, Python)',
+      trafficPattern: '250,000 concurrent persistent WebSocket connections + spiky AI/exports',
+      budgetOps: 'Dedicated platform & SRE squad',
+      latencyConsistency: '<40ms live cursor/edit fan-out; Billing isolated from realtime churn',
+      timeToMarket: 'Squads must deploy independently with zero WebSocket drops during Billing releases',
+    },
+    bestFit: 'microservices',
+    hybridNote:
+      'Real-world hybrid: Isolate stateful WebSocket collaboration pods (backed by Redis Pub/Sub room fan-out) as a dedicated service separate from Billing/Auth, Python AI services, and Serverless PNG/PDF export workers.',
+    outcomes: {
+      microservices: {
+        verdict: 'best-fit',
+        headline: 'Right architecture! Stateful WebSocket rooms stay rock-solid while Billing & AI ship daily.',
+        sixMonthsLater:
+          'The Realtime Sync squad runs dedicated stateful WebSocket servers with Redis Pub/Sub cross-node fan-out, Billing deploys 3x a day without disconnecting a single active whiteboard session, and Python AI engineers iterate independently on GPU nodes.',
+        whatWorked: [
+          'Deploying Billing or SSO fixes never severed 250,000 open WebSocket connections.',
+          'Polyglot freedom let Realtime run Rust/Node while AI ran Python on GPUs.',
+          'Dedicated L7 load balancing and per-service scaling matched wildly different workloads.',
+        ],
+        whatHurt: [
+          'Required graceful WebSocket draining on Realtime deploys and strong distributed tracing.',
+        ],
+        scores: { devSpeed: 4, opsSimplicity: 2, scaling: 5, costEfficiency: 4, faultIsolation: 5 },
+      },
+      'modular-monolith': {
+        verdict: 'risky',
+        headline: 'Every tiny Billing or UI deploy disconnects 250,000 live WebSocket users!',
+        sixMonthsLater:
+          'Restarting the shared monolith process to ship an invoice bug fix triggered massive reconnect storms across every active whiteboard, and Python AI models couldn’t live in the same runtime.',
+        whatWorked: [
+          'Simple early prototype at 500 users.',
+        ],
+        whatHurt: [
+          'Shared deployments caused constant WebSocket reconnect storms.',
+          '50 engineers across 3 languages collided constantly.',
+        ],
+        scores: { devSpeed: 2, opsSimplicity: 3, scaling: 1, costEfficiency: 3, faultIsolation: 1 },
+      },
+      serverless: {
+        verdict: 'risky',
+        headline: 'Stateless short-lived functions clash with 250,000 persistent low-latency WebSockets.',
+        sixMonthsLater:
+          'While Serverless excelled for on-demand PNG/PDF exports, trying to run sub-40ms multiplayer board state and high-frequency cursor broadcasts through stateless FaaS added latency and steep per-message gateway costs.',
+        whatWorked: [
+          'Ideal for bursty PNG/PDF board exports.',
+        ],
+        whatHurt: [
+          'Poor fit for stateful, high-frequency persistent WebSocket collaboration rooms.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 3, scaling: 3, costEfficiency: 2, faultIsolation: 4 },
+      },
+      'event-driven': {
+        verdict: 'viable',
+        headline: 'Essential for cross-node pub/sub fan-out, but you still need isolated service boundaries.',
+        sixMonthsLater:
+          'Redis Pub/Sub and Kafka handled cross-server room sync and async activity feeds nicely, yet core team autonomy, GPU AI isolation, and protecting live sockets from Billing deploys still required Microservices.',
+        whatWorked: [
+          'Clean pub/sub fan-out across horizontally scaled WebSocket nodes.',
+        ],
+        whatHurt: [
+          'Events alone didn’t solve polyglot GPU isolation or independent Billing/Realtime deploy lifecycles.',
+        ],
+        scores: { devSpeed: 3, opsSimplicity: 2, scaling: 5, costEfficiency: 3, faultIsolation: 4 },
       },
     },
   },

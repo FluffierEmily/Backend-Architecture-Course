@@ -160,6 +160,45 @@ export const serverlessModule: ArchitectureModule = {
       keyTakeaway:
         'Thin cloud adapters give you instant local unit tests with Vitest — and let you move logic to containers or another cloud in hours instead of months.',
     },
+    {
+      id: 'sl-local-dev-reality',
+      badge: 'Developer Workflow',
+      title: 'Local Development & Testing Reality in Serverless',
+      summary:
+        'Beginners often spend days trying to emulate AWS IAM, SQS, EventBridge, and API Gateway locally — only to hit subtle differences the moment they deploy.',
+      bulletPoints: [
+        'Test 90% of your code locally with fast Vitest unit tests against plain TypeScript domain functions (isolated behind thin cloud adapters).',
+        'For real cloud triggers, IAM policies, and queues, deploy lightweight ephemeral dev environments (e.g., `sst dev` or per-branch preview stacks) instead of fighting fragile local cloud emulators.',
+      ],
+      keyTakeaway:
+        'Unit-test domain logic locally in milliseconds, and test cloud wiring against a cheap ephemeral dev stage in the real cloud.',
+    },
+    {
+      id: 'sl-edge-vs-regional',
+      badge: 'Global Latency Trap',
+      title: 'Edge Compute vs. Regional Serverless (The Far-Away DB Trap)',
+      summary:
+        'Running code on globally distributed Edge nodes (Cloudflare Workers, Vercel Edge) sounds automatically faster — until your Edge function makes 4 sequential queries to a single Postgres database across an ocean.',
+      bulletPoints: [
+        'Where Edge wins: JWT auth checks, geo-redirects, A/B routing, rate limiting, CDN-cached GETs, or reading from geo-replicated KV/read replicas.',
+        'Where Regional wins: Multi-query relational writes — co-locating your Lambda/container in the exact same region as your primary database avoids multiplying 120ms cross-ocean round-trips.',
+      ],
+      keyTakeaway:
+        'Move compute close to your DATA, not just close to your users — Edge functions querying a distant single-region DB are often slower than regional functions.',
+    },
+    {
+      id: 'sl-async-realtime',
+      badge: 'Client Updates',
+      title: 'Delivering Async Results & Handling Real-Time Connections',
+      summary:
+        'Because thin intake functions reply `202 Accepted` and exit in milliseconds, you need a clean pattern to notify the browser once background work finishes.',
+      bulletPoints: [
+        'Simple jobs (PDF exports, thumbnails): Short polling `GET /jobs/:id` every 2s or Server-Sent Events (SSE) works cleanly with zero stateful infrastructure.',
+        'Persistent two-way WebSockets (chat, collaborative docs): Standard stateless FaaS functions cannot hold open sockets for 30 minutes — use managed WebSocket gateways (API Gateway WebSockets, Cloudflare Durable Objects, Ably/Pusher) or container services.',
+      ],
+      keyTakeaway:
+        'Pair `202 Accepted` functions with job-status polling, webhooks, or a managed realtime gateway rather than trying to hold stateful sockets inside FaaS.',
+    },
   ],
   codeComparisons: [
     {
@@ -389,12 +428,22 @@ export async function checkoutHandler(order: { id: string; total: number }) {
       detail:
         'Have a tiny intake function issue a short-lived S3/R2 presigned URL so 50MB files upload directly to storage, bypassing API Gateway payload limits completely.',
     },
+    {
+      title: 'Co-Locate Compute with Your Primary Database',
+      detail:
+        'Reserve Edge runtimes for auth, routing, and cached reads; deploy DB-heavy functions in the same cloud region as your primary database to avoid cross-ocean query waterfalls.',
+    },
   ],
   pitfalls: [
     {
       title: 'Denial-of-Wallet Attacks & Infinite Trigger Loops',
       symptom: 'An unthrottled endpoint hit by bots — or an S3 upload function writing back to the same input prefix — triggers millions of invocations and a huge cloud bill.',
       fix: 'Enable API Gateway rate limiting, set account concurrency caps & billing alerts, and always write S3 outputs to a separate bucket/prefix (`uploads/` → `processed/`).',
+    },
+    {
+      title: 'The Edge Compute + Centralized Database Latency Trap',
+      symptom: 'Deploying a DB-heavy API globally to the Edge makes requests take 800ms+ because 5 SQL queries bounce back and forth to `us-east-1`.',
+      fix: 'Run DB-bound handlers in the database’s region (or use read replicas/cached KV at the edge).',
     },
     {
       title: 'Synchronous Lambda-Calling-Lambda Chains',
@@ -469,6 +518,11 @@ export async function checkoutHandler(order: { id: string; total: number }) {
           title: 'Add strict timeout & input guardrails',
           detail: 'Reject oversized images cleanly with `413 Payload Too Large` before allocating memory.',
         },
+        {
+          id: 'sl-p1-m4',
+          title: 'Break it on purpose: Send a 10MB file & compare cold vs. warm logs',
+          detail: 'Verify oversized uploads fail fast with `413`, then let the function go idle and compare cold-start vs. warm-start latency in your structured logs.',
+        },
       ],
       architectureRules: [
         'Do not rely on local disk files surviving between requests — treat every invocation as potentially brand new.',
@@ -508,6 +562,11 @@ export async function checkoutHandler(order: { id: string; total: number }) {
           title: 'Build the async worker with retry & DLQ handling',
           detail: 'Simulate a Discord 500 error and verify the job retries automatically without losing the event.',
         },
+        {
+          id: 'sl-p2-m4',
+          title: 'Break it on purpose: Replay a duplicate webhook & tamper with 1 byte',
+          detail: 'Send the exact same signed webhook twice to confirm deduplication, then alter 1 character in the JSON body to verify Intake rejects it with `401 Unauthorized`.',
+        },
       ],
       architectureRules: [
         'Keep `intakeWebhook` under 100ms p95 — zero external third-party HTTP calls in the intake path.',
@@ -524,6 +583,7 @@ export async function checkoutHandler(order: { id: string; total: number }) {
     faultIsolation: 'High',
     costAtIdle: 'Near Zero',
     dataConsistency: 'Per-Function / Mixed',
+    typicalDatastore: 'Pooled/HTTP Postgres, DynamoDB, S3/R2 Object Storage',
     bestFor: 'Spiky traffic, scheduled jobs, webhooks, media/file processing, zero-idle cost',
   },
 };

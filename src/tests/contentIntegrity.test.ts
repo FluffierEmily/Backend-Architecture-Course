@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_PRACTICE_PROJECTS,
   ARCHITECTURE_MODULES,
+  BEGINNER_GLOSSARY,
   FOUNDATION_BLOCKS,
+  HYBRID_CAPSTONE_PROJECTS,
   SIMULATOR_SCENARIOS,
 } from '../data';
 import type { ArchitectureId } from '../types/course';
@@ -64,8 +66,9 @@ describe('Course content integrity', () => {
     }
   });
 
-  it('provides Starter and Stretch self-paced practice projects for every architecture', () => {
-    expect(ALL_PRACTICE_PROJECTS.length).toBe(8);
+  it('provides Starter and Stretch self-paced practice projects for every architecture plus Hybrid capstone', () => {
+    expect(HYBRID_CAPSTONE_PROJECTS.length).toBeGreaterThanOrEqual(1);
+    expect(ALL_PRACTICE_PROJECTS.length).toBe(8 + HYBRID_CAPSTONE_PROJECTS.length);
     const milestoneIds = new Set<string>();
 
     for (const mod of ARCHITECTURE_MODULES) {
@@ -74,7 +77,7 @@ describe('Course content integrity', () => {
       expect(difficulties).toEqual(['starter', 'stretch']);
 
       for (const proj of mod.practiceProjects) {
-        expect(proj.milestones.length).toBeGreaterThanOrEqual(3);
+        expect(proj.milestones.length).toBeGreaterThanOrEqual(4);
         expect(proj.architectureRules.length).toBeGreaterThanOrEqual(2);
         for (const m of proj.milestones) {
           expect(milestoneIds.has(m.id)).toBe(false);
@@ -82,10 +85,19 @@ describe('Course content integrity', () => {
         }
       }
     }
+
+    for (const proj of HYBRID_CAPSTONE_PROJECTS) {
+      expect(proj.architectureId).toBe('hybrid');
+      expect(proj.milestones.length).toBeGreaterThanOrEqual(4);
+      for (const m of proj.milestones) {
+        expect(milestoneIds.has(m.id)).toBe(false);
+        milestoneIds.add(m.id);
+      }
+    }
   });
 
-  it('defines complete outcomes and valid 1-5 scores for all 10 simulator scenarios (greenfield + brownfield)', () => {
-    expect(SIMULATOR_SCENARIOS.length).toBe(10);
+  it('defines complete outcomes and valid 1-5 scores for all 13 simulator scenarios (greenfield, brownfield & modern)', () => {
+    expect(SIMULATOR_SCENARIOS.length).toBe(13);
 
     for (const scenario of SIMULATOR_SCENARIOS) {
       expect(EXPECTED_ARCH_IDS).toContain(scenario.bestFit);
@@ -105,13 +117,21 @@ describe('Course content integrity', () => {
     }
   });
 
-  it('provides beginner foundation blocks including caching, rate limiting, observability, auth, and migrations', () => {
-    expect(FOUNDATION_BLOCKS.length).toBeGreaterThanOrEqual(11);
+  it('provides all 18 foundation blocks and 28 glossary terms covering core & advanced gaps', () => {
+    expect(FOUNDATION_BLOCKS.length).toBeGreaterThanOrEqual(18);
+    expect(BEGINNER_GLOSSARY.length).toBeGreaterThanOrEqual(28);
     const ids = FOUNDATION_BLOCKS.map((b) => b.id);
     expect(ids).toContain('caching');
     expect(ids).toContain('rate-limiting-backpressure');
     expect(ids).toContain('observability');
     expect(ids).toContain('security-auth');
     expect(ids).toContain('zero-downtime-migrations');
+    expect(ids).toContain('testing-strategies');
+    expect(ids).toContain('concurrency-locking');
+    expect(ids).toContain('realtime-push');
+    expect(ids).toContain('db-choice-scaling');
+    expect(ids).toContain('safe-deployments');
+    expect(ids).toContain('multi-tenancy');
+    expect(ids).toContain('availability-dr');
   });
 });
