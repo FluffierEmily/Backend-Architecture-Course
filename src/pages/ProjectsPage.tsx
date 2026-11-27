@@ -1,4 +1,6 @@
-import { ALL_PRACTICE_PROJECTS, ARCHITECTURE_MODULES } from '../data';
+import { useMemo } from 'react';
+import { ALL_PRACTICE_PROJECTS } from '../data/projects';
+import { ARCHITECTURE_META } from '../data/courseMeta';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import { ArchitectureIcon } from '../components/ArchitectureIcon';
 import type { ProjectArchitectureId } from '../types/course';
@@ -12,8 +14,11 @@ interface ProjectsPageProps {
 const VALID_ARCH_FILTERS = new Set<string>([
   'all',
   'hybrid',
-  ...ARCHITECTURE_MODULES.map((m) => m.id),
+  ...ARCHITECTURE_META.map((m) => m.id),
 ]);
+
+const ALL_MILESTONE_IDS = ALL_PRACTICE_PROJECTS.flatMap((p) => p.milestones.map((m) => m.id));
+const TOTAL_MILESTONES = ALL_MILESTONE_IDS.length;
 
 const isArchFilter = (v: unknown): v is 'all' | ProjectArchitectureId =>
   typeof v === 'string' && VALID_ARCH_FILTERS.has(v);
@@ -36,19 +41,22 @@ export function ProjectsPage({
     isDifficultyFilter
   );
 
-  const filtered = ALL_PRACTICE_PROJECTS.filter((p) => {
-    const matchArch = archFilter === 'all' || p.architectureId === archFilter;
-    const matchDiff = difficultyFilter === 'all' || p.difficulty === difficultyFilter;
-    return matchArch && matchDiff;
-  });
+  const completedSet = useMemo(() => new Set(completedMilestones), [completedMilestones]);
 
-  const totalMilestones = ALL_PRACTICE_PROJECTS.reduce(
-    (sum, p) => sum + p.milestones.length,
-    0
+  const filtered = useMemo(
+    () =>
+      ALL_PRACTICE_PROJECTS.filter((p) => {
+        const matchArch = archFilter === 'all' || p.architectureId === archFilter;
+        const matchDiff = difficultyFilter === 'all' || p.difficulty === difficultyFilter;
+        return matchArch && matchDiff;
+      }),
+    [archFilter, difficultyFilter]
   );
-  const doneMilestones = ALL_PRACTICE_PROJECTS.flatMap((p) => p.milestones).filter((m) =>
-    completedMilestones.includes(m.id)
-  ).length;
+
+  const doneMilestones = useMemo(
+    () => ALL_MILESTONE_IDS.filter((id) => completedSet.has(id)).length,
+    [completedSet]
+  );
 
   return (
     <div className="space-y-8">
@@ -59,7 +67,7 @@ export function ProjectsPage({
               Self-Paced Portfolio Builders
             </span>
             <span className="font-mono text-slate-500 dark:text-slate-400">
-              {doneMilestones} / {totalMilestones} Milestones Checked
+              {doneMilestones} / {TOTAL_MILESTONES} Milestones Checked
             </span>
           </div>
           <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -79,15 +87,14 @@ export function ProjectsPage({
               role="tab"
               aria-selected={archFilter === 'all'}
               onClick={() => setArchFilter('all')}
-              className={`border-b-2 pb-3 text-sm font-semibold transition ${
-                archFilter === 'all'
+              className={`border-b-2 pb-3 text-sm font-semibold transition ${archFilter === 'all'
                   ? 'border-indigo-500 text-slate-900 dark:text-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
+                }`}
             >
               All ({ALL_PRACTICE_PROJECTS.length})
             </button>
-            {ARCHITECTURE_MODULES.map((m) => {
+            {ARCHITECTURE_META.map((m) => {
               const isSelected = archFilter === m.id;
               return (
                 <button
@@ -96,11 +103,10 @@ export function ProjectsPage({
                   role="tab"
                   aria-selected={isSelected}
                   onClick={() => setArchFilter(m.id)}
-                  className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${
-                    isSelected
+                  className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${isSelected
                       ? 'border-indigo-500 text-slate-900 dark:text-white'
                       : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
+                    }`}
                 >
                   <ArchitectureIcon architectureId={m.id} className="h-3.5 w-3.5" colored />
                   {m.shortName}
@@ -112,11 +118,10 @@ export function ProjectsPage({
               role="tab"
               aria-selected={archFilter === 'hybrid'}
               onClick={() => setArchFilter('hybrid')}
-              className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${
-                archFilter === 'hybrid'
+              className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${archFilter === 'hybrid'
                   ? 'border-indigo-500 text-slate-900 dark:text-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
+                }`}
             >
               <ArchitectureIcon architectureId="hybrid" className="h-3.5 w-3.5" colored />
               Hybrid / Evolution
@@ -130,11 +135,10 @@ export function ProjectsPage({
                 key={diff}
                 type="button"
                 onClick={() => setDifficultyFilter(diff)}
-                className={`font-semibold capitalize transition ${
-                  difficultyFilter === diff
+                className={`font-semibold capitalize transition ${difficultyFilter === diff
                     ? 'text-indigo-600 underline decoration-indigo-500 underline-offset-4 dark:text-indigo-300'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                }`}
+                  }`}
               >
                 {diff}
               </button>
@@ -149,7 +153,7 @@ export function ProjectsPage({
           <PracticeProjectCard
             key={project.id}
             project={project}
-            completedMilestones={completedMilestones}
+            completedMilestones={completedSet}
             onToggleMilestone={onToggleMilestone}
             showArchitectureBadge
           />

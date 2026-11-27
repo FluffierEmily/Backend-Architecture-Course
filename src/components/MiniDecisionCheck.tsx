@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import type { ArchitectureId, MiniDecisionCheckItem } from '../types/course';
-import { ARCHITECTURE_BY_ID } from '../data';
+import { ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureIcon } from './ArchitectureIcon';
 
@@ -53,7 +53,7 @@ export function MiniDecisionCheck({
     const userChoice = answers[check.id];
     const isCorrect = hasAnswered && userChoice === check.isGoodFit;
     const betterArch = check.betterAlternative
-      ? ARCHITECTURE_BY_ID[check.betterAlternative]
+      ? ARCHITECTURE_META_BY_ID[check.betterAlternative]
       : undefined;
 
     return (

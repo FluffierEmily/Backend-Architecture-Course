@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Highlight, themes } from 'prism-react-renderer';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { Highlight, themes, type LineInputProps, type LineOutputProps, type Token, type TokenInputProps, type TokenOutputProps } from 'prism-react-renderer';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -17,24 +17,268 @@ interface CodeComparisonProps {
 }
 
 type ViewTab = 'split' | 'problem' | 'refactored';
+type CodeSide = 'problem' | 'refactored';
+type LineVisualState = 'active' | 'other' | 'quiz' | 'normal';
 
-function isLineInRange(lineNumber: number, range: [number, number]): boolean {
-  return lineNumber >= range[0] && lineNumber <= range[1];
-}
-
-function findAnnotationForLine(
+function buildLineAnnotationMap(
   annotations: CodeAnnotation[],
-  lineNumber: number,
-  side: 'problem' | 'refactored'
-): CodeAnnotation | undefined {
-  return annotations.find((a) =>
-    isLineInRange(lineNumber, side === 'problem' ? a.problemLines : a.refactoredLines)
-  );
+  side: CodeSide
+): Map<number, CodeAnnotation> {
+  const map = new Map<number, CodeAnnotation>();
+  for (const annotation of annotations) {
+    const [start, end] = side === 'problem' ? annotation.problemLines : annotation.refactoredLines;
+    for (let line = start; line <= end; line++) {
+      if (!map.has(line)) {
+        map.set(line, annotation);
+      }
+    }
+  }
+  return map;
 }
 
 const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
 
-export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
+interface CodeLineProps {
+  line: Token[];
+  lineNumber: number;
+  side: CodeSide;
+  isProblem: boolean;
+  visualState: LineVisualState;
+  matchedAnnotation: CodeAnnotation | undefined;
+  getLineProps: (input: LineInputProps) => LineOutputProps;
+  getTokenProps: (input: TokenInputProps) => TokenOutputProps;
+  onLineClick: (
+    side: CodeSide,
+    lineNumber: number,
+    matchedAnnotation: CodeAnnotation | undefined
+  ) => void;
+}
+
+const CodeLine = memo(
+  function CodeLine({
+    line,
+    lineNumber,
+    side,
+    isProblem,
+    visualState,
+    matchedAnnotation,
+    getLineProps,
+    getTokenProps,
+    onLineClick,
+  }: CodeLineProps) {
+    const lineProps = getLineProps({ line });
+    const isQuizProblem = visualState === 'quiz' || (visualState === 'active' && isProblem && !matchedAnnotation);
+
+    let highlightClasses =
+      visualState === 'quiz'
+        ? 'border-l-2 border-transparent hover:bg-indigo-500/10 cursor-pointer'
+        : 'border-l-2 border-transparent hover:bg-white/[0.03]';
+    if (visualState === 'active') {
+      highlightClasses = isProblem
+        ? 'border-l-4 border-rose-400 bg-rose-500/15'
+        : 'border-l-4 border-emerald-400 bg-emerald-500/15';
+    } else if (visualState === 'other') {
+      highlightClasses = isProblem
+        ? 'border-l-2 border-rose-500/35 bg-rose-500/[0.04] hover:bg-rose-500/10 cursor-pointer'
+        : 'border-l-2 border-emerald-500/35 bg-emerald-500/[0.04] hover:bg-emerald-500/10 cursor-pointer';
+    }
+
+    const isInteractive = visualState === 'quiz' || Boolean(matchedAnnotation);
+
+    return (
+      <div
+        {...lineProps}
+        onClick={() => onLineClick(side, lineNumber, matchedAnnotation)}
+        role={isInteractive ? 'button' : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        onKeyDown={(e) => {
+          if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onLineClick(side, lineNumber, matchedAnnotation);
+          }
+        }}
+        title={
+          visualState === 'quiz' || isQuizProblem
+            ? `Check line ${lineNumber}`
+            : matchedAnnotation
+            ? `Inspect: ${matchedAnnotation.label}`
+            : undefined
+        }
+        className={`flex px-3.5 py-0.5 transition-colors ${highlightClasses}`}
+      >
+        <span className="mr-4 inline-block w-6 shrink-0 select-none text-right text-xs text-slate-500">
+          {lineNumber}
+        </span>
+        <span className="flex-1 whitespace-pre">
+          {line.map((token, key) => (
+            <span key={key} {...getTokenProps({ token })} />
+          ))}
+        </span>
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.line === next.line &&
+    prev.lineNumber === next.lineNumber &&
+    prev.side === next.side &&
+    prev.isProblem === next.isProblem &&
+    prev.visualState === next.visualState &&
+    prev.matchedAnnotation === next.matchedAnnotation &&
+    prev.onLineClick === next.onLineClick
+);
+
+interface CodePaneProps {
+  side: CodeSide;
+  code: string;
+  title: string;
+  file: string;
+  lineMap: Map<number, CodeAnnotation>;
+  quizMode: boolean;
+  showAllExplainers: boolean;
+  activeAnnotation: CodeAnnotation | undefined;
+  spottedSet: ReadonlySet<string>;
+  onLineClick: (
+    side: CodeSide,
+    lineNumber: number,
+    matchedAnnotation: CodeAnnotation | undefined
+  ) => void;
+}
+
+const CodePane = memo(function CodePane({
+  side,
+  code,
+  title,
+  file,
+  lineMap,
+  quizMode,
+  showAllExplainers,
+  activeAnnotation,
+  spottedSet,
+  onLineClick,
+}: CodePaneProps) {
+  const isProblem = side === 'problem';
+  const isQuizProblem = quizMode && isProblem;
+  const trimmedCode = useMemo(() => code.trimEnd(), [code]);
+
+  return (
+    <div
+      className={`flex flex-col overflow-hidden rounded-2xl border bg-[#0b1120] ${
+        isProblem ? 'border-rose-500/25' : 'border-emerald-500/25'
+      }`}
+    >
+      {/* Calm Pane Header */}
+      <div
+        className={`flex items-center justify-between gap-2 border-b px-4 py-3 ${
+          isProblem
+            ? 'border-rose-500/20 bg-rose-950/25'
+            : 'border-emerald-500/20 bg-emerald-950/25'
+        }`}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            {isProblem ? (
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            )}
+            <span
+              className={`truncate text-sm font-semibold ${
+                isProblem ? 'text-rose-200' : 'text-emerald-200'
+              }`}
+            >
+              {title}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{file}</p>
+        </div>
+        <span
+          className={`shrink-0 text-[11px] font-bold uppercase tracking-wider ${
+            isProblem ? 'text-rose-300' : 'text-emerald-300'
+          }`}
+        >
+          {isProblem ? 'Problematic' : 'Refactored'}
+        </span>
+      </div>
+
+      {/* Highlighted Code with Comfortable Line Spacing */}
+      <div className="overflow-x-auto py-4 text-[13.5px] leading-7">
+        <Highlight theme={themes.nightOwl} code={trimmedCode} language="typescript">
+          {({ tokens, getLineProps, getTokenProps }) => (
+            <pre className="m-0 bg-transparent font-mono">
+              {tokens.map((line, idx) => {
+                const lineNumber = idx + 1;
+                const matchedAnnotation = lineMap.get(lineNumber);
+                const isSpotted = matchedAnnotation ? spottedSet.has(matchedAnnotation.id) : false;
+
+                let visualState: LineVisualState = 'normal';
+                if (isQuizProblem) {
+                  visualState = isSpotted ? 'active' : 'quiz';
+                } else if (matchedAnnotation) {
+                  visualState =
+                    showAllExplainers || matchedAnnotation.id === activeAnnotation?.id
+                      ? 'active'
+                      : 'other';
+                }
+
+                return (
+                  <CodeLine
+                    key={lineNumber}
+                    line={line}
+                    lineNumber={lineNumber}
+                    side={side}
+                    isProblem={isProblem}
+                    visualState={visualState}
+                    matchedAnnotation={matchedAnnotation}
+                    getLineProps={getLineProps}
+                    getTokenProps={getTokenProps}
+                    onLineClick={onLineClick}
+                  />
+                );
+              })}
+            </pre>
+          )}
+        </Highlight>
+      </div>
+
+      {/* Synced Single Explainer Footer */}
+      {!quizMode && !showAllExplainers && activeAnnotation && (
+        <div
+          className={`mt-auto border-t px-5 py-4 text-sm ${
+            isProblem
+              ? 'border-rose-500/20 bg-rose-950/25 text-rose-100'
+              : 'border-emerald-500/20 bg-emerald-950/25 text-emerald-100'
+          }`}
+        >
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span
+              className={`text-xs font-bold uppercase tracking-wider ${
+                isProblem ? 'text-rose-300' : 'text-emerald-300'
+              }`}
+            >
+              {isProblem ? 'Why this breaks' : 'Why the refactor works'} · {activeAnnotation.label}
+            </span>
+            <span className="font-mono text-[11px] text-slate-400">
+              L
+              {isProblem
+                ? `${activeAnnotation.problemLines[0]}–${activeAnnotation.problemLines[1]}`
+                : `${activeAnnotation.refactoredLines[0]}–${activeAnnotation.refactoredLines[1]}`}
+            </span>
+          </div>
+          <p className="leading-7 text-slate-200">
+            {isProblem
+              ? activeAnnotation.problemExplanation
+              : activeAnnotation.refactoredExplanation}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+export const CodeComparison = memo(function CodeComparison({
+  item,
+  onInspect,
+}: CodeComparisonProps) {
   const [selectedId, setSelectedId] = usePersistedState<string>(
     `code.${item.id}.selectedAnnotationId`,
     item.annotations[0]?.id ?? '',
@@ -50,6 +294,16 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
   const [spottedIds, setSpottedIds] = useState<string[]>([]);
   const [quizHint, setQuizHint] = useState<string | null>(null);
 
+  const problemLineMap = useMemo(
+    () => buildLineAnnotationMap(item.annotations, 'problem'),
+    [item.annotations]
+  );
+  const refactoredLineMap = useMemo(
+    () => buildLineAnnotationMap(item.annotations, 'refactored'),
+    [item.annotations]
+  );
+  const spottedSet = useMemo(() => new Set(spottedIds), [spottedIds]);
+
   const activeIndex = Math.max(
     0,
     item.annotations.findIndex((a) => a.id === selectedId)
@@ -57,10 +311,13 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
   const activeAnnotation = item.annotations[activeIndex] ?? item.annotations[0];
   const allSpotted = spottedIds.length === item.annotations.length;
 
-  const handleSelect = (annotationId: string) => {
-    setSelectedId(annotationId);
-    onInspect?.(item.id);
-  };
+  const handleSelect = useCallback(
+    (annotationId: string) => {
+      setSelectedId(annotationId);
+      onInspect?.(item.id);
+    },
+    [item.id, onInspect, setSelectedId]
+  );
 
   const toggleQuizMode = () => {
     setQuizMode((prev) => {
@@ -74,11 +331,11 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
     });
   };
 
-  const handleLineClick = (
-    side: 'problem' | 'refactored',
-    lineNumber: number,
-    matchedAnnotation: CodeAnnotation | undefined
-  ) => {
+  const lineClickHandlerRef = useRef<
+    (side: CodeSide, lineNumber: number, matchedAnnotation: CodeAnnotation | undefined) => void
+  >(() => {});
+
+  lineClickHandlerRef.current = (side, lineNumber, matchedAnnotation) => {
     if (quizMode && side === 'problem') {
       if (matchedAnnotation) {
         setSpottedIds((prev) =>
@@ -99,173 +356,18 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
     }
   };
 
+  const handleLineClick = useCallback(
+    (side: CodeSide, lineNumber: number, matchedAnnotation: CodeAnnotation | undefined) => {
+      lineClickHandlerRef.current(side, lineNumber, matchedAnnotation);
+    },
+    []
+  );
+
   const stepAnnotation = (delta: number) => {
     const nextIdx =
       (activeIndex + delta + item.annotations.length) % item.annotations.length;
     setShowAllExplainers(false);
     handleSelect(item.annotations[nextIdx].id);
-  };
-
-  const renderCodePane = (side: 'problem' | 'refactored') => {
-    const isProblem = side === 'problem';
-    const code = isProblem ? item.problemCode : item.refactoredCode;
-    const title = isProblem ? item.problemTitle : item.refactoredTitle;
-    const file = isProblem ? item.problemFile : item.refactoredFile;
-    const isQuizProblem = quizMode && isProblem;
-
-    return (
-      <div
-        className={`flex flex-col overflow-hidden rounded-2xl border bg-[#0b1120] ${
-          isProblem ? 'border-rose-500/25' : 'border-emerald-500/25'
-        }`}
-      >
-        {/* Calm Pane Header */}
-        <div
-          className={`flex items-center justify-between gap-2 border-b px-4 py-3 ${
-            isProblem
-              ? 'border-rose-500/20 bg-rose-950/25'
-              : 'border-emerald-500/20 bg-emerald-950/25'
-          }`}
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              {isProblem ? (
-                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-              )}
-              <span
-                className={`truncate text-sm font-semibold ${
-                  isProblem ? 'text-rose-200' : 'text-emerald-200'
-                }`}
-              >
-                {title}
-              </span>
-            </div>
-            <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{file}</p>
-          </div>
-          <span
-            className={`shrink-0 text-[11px] font-bold uppercase tracking-wider ${
-              isProblem ? 'text-rose-300' : 'text-emerald-300'
-            }`}
-          >
-            {isProblem ? 'Problematic' : 'Refactored'}
-          </span>
-        </div>
-
-        {/* Highlighted Code with Comfortable Line Spacing */}
-        <div className="overflow-x-auto py-4 text-[13.5px] leading-7">
-          <Highlight theme={themes.nightOwl} code={code.trimEnd()} language="typescript">
-            {({ tokens, getLineProps, getTokenProps }) => (
-              <pre className="m-0 bg-transparent font-mono">
-                {tokens.map((line, idx) => {
-                  const lineNumber = idx + 1;
-                  const matchedAnnotation = findAnnotationForLine(
-                    item.annotations,
-                    lineNumber,
-                    side
-                  );
-
-                  const isSpotted =
-                    matchedAnnotation && spottedIds.includes(matchedAnnotation.id);
-
-                  const isActive = isQuizProblem
-                    ? Boolean(isSpotted)
-                    : Boolean(
-                        matchedAnnotation &&
-                          (showAllExplainers || matchedAnnotation.id === activeAnnotation?.id)
-                      );
-                  const isOtherAnnotated = !isQuizProblem && Boolean(matchedAnnotation && !isActive);
-
-                  const lineProps = getLineProps({ line });
-
-                  let highlightClasses = isQuizProblem
-                    ? 'border-l-2 border-transparent hover:bg-indigo-500/10 cursor-pointer'
-                    : 'border-l-2 border-transparent hover:bg-white/[0.03]';
-                  if (isActive) {
-                    highlightClasses = isProblem
-                      ? 'border-l-4 border-rose-400 bg-rose-500/15'
-                      : 'border-l-4 border-emerald-400 bg-emerald-500/15';
-                  } else if (isOtherAnnotated) {
-                    highlightClasses = isProblem
-                      ? 'border-l-2 border-rose-500/35 bg-rose-500/[0.04] hover:bg-rose-500/10 cursor-pointer'
-                      : 'border-l-2 border-emerald-500/35 bg-emerald-500/[0.04] hover:bg-emerald-500/10 cursor-pointer';
-                  }
-
-                  const isInteractive = isQuizProblem || Boolean(matchedAnnotation);
-
-                  return (
-                    <div
-                      key={lineNumber}
-                      {...lineProps}
-                      onClick={() => handleLineClick(side, lineNumber, matchedAnnotation)}
-                      role={isInteractive ? 'button' : undefined}
-                      tabIndex={isInteractive ? 0 : undefined}
-                      onKeyDown={(e) => {
-                        if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
-                          e.preventDefault();
-                          handleLineClick(side, lineNumber, matchedAnnotation);
-                        }
-                      }}
-                      title={
-                        isQuizProblem
-                          ? `Check line ${lineNumber}`
-                          : matchedAnnotation
-                          ? `Inspect: ${matchedAnnotation.label}`
-                          : undefined
-                      }
-                      className={`flex px-3.5 py-0.5 transition-colors ${highlightClasses}`}
-                    >
-                      <span className="mr-4 inline-block w-6 shrink-0 select-none text-right text-xs text-slate-500">
-                        {lineNumber}
-                      </span>
-                      <span className="flex-1 whitespace-pre">
-                        {line.map((token, key) => (
-                          <span key={key} {...getTokenProps({ token })} />
-                        ))}
-                      </span>
-                    </div>
-                  );
-                })}
-              </pre>
-            )}
-          </Highlight>
-        </div>
-
-        {/* Synced Single Explainer Footer */}
-        {!quizMode && !showAllExplainers && activeAnnotation && (
-          <div
-            className={`mt-auto border-t px-5 py-4 text-sm ${
-              isProblem
-                ? 'border-rose-500/20 bg-rose-950/25 text-rose-100'
-                : 'border-emerald-500/20 bg-emerald-950/25 text-emerald-100'
-            }`}
-          >
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span
-                className={`text-xs font-bold uppercase tracking-wider ${
-                  isProblem ? 'text-rose-300' : 'text-emerald-300'
-                }`}
-              >
-                {isProblem ? 'Why this breaks' : 'Why the refactor works'} ·{' '}
-                {activeAnnotation.label}
-              </span>
-              <span className="font-mono text-[11px] text-slate-400">
-                L
-                {isProblem
-                  ? `${activeAnnotation.problemLines[0]}–${activeAnnotation.problemLines[1]}`
-                  : `${activeAnnotation.refactoredLines[0]}–${activeAnnotation.refactoredLines[1]}`}
-              </span>
-            </div>
-            <p className="leading-7 text-slate-200">
-              {isProblem
-                ? activeAnnotation.problemExplanation
-                : activeAnnotation.refactoredExplanation}
-            </p>
-          </div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -397,8 +499,20 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
           quizMode || mobileTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
         }`}
       >
-        {(quizMode || mobileTab === 'split' || mobileTab === 'problem') &&
-          renderCodePane('problem')}
+        {(quizMode || mobileTab === 'split' || mobileTab === 'problem') && (
+          <CodePane
+            side="problem"
+            code={item.problemCode}
+            title={item.problemTitle}
+            file={item.problemFile}
+            lineMap={problemLineMap}
+            quizMode={quizMode}
+            showAllExplainers={showAllExplainers}
+            activeAnnotation={activeAnnotation}
+            spottedSet={spottedSet}
+            onLineClick={handleLineClick}
+          />
+        )}
 
         {quizMode ? (
           <div className="flex flex-col justify-between rounded-2xl border border-stone-200 bg-stone-50 p-6 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
@@ -429,7 +543,7 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
                   <div
                     key={ann.id}
                     className={`h-1.5 flex-1 rounded-full transition-colors ${
-                      spottedIds.includes(ann.id)
+                      spottedSet.has(ann.id)
                         ? 'bg-emerald-500'
                         : 'bg-stone-200 dark:bg-slate-700/80'
                     }`}
@@ -447,7 +561,7 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
               {spottedIds.length > 0 && (
                 <div className="mt-4 space-y-3">
                   {item.annotations
-                    .filter((a) => spottedIds.includes(a.id))
+                    .filter((a) => spottedSet.has(a.id))
                     .map((ann) => (
                       <div
                         key={ann.id}
@@ -486,7 +600,20 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
             </div>
           </div>
         ) : (
-          (mobileTab === 'split' || mobileTab === 'refactored') && renderCodePane('refactored')
+          (mobileTab === 'split' || mobileTab === 'refactored') && (
+            <CodePane
+              side="refactored"
+              code={item.refactoredCode}
+              title={item.refactoredTitle}
+              file={item.refactoredFile}
+              lineMap={refactoredLineMap}
+              quizMode={quizMode}
+              showAllExplainers={showAllExplainers}
+              activeAnnotation={activeAnnotation}
+              spottedSet={spottedSet}
+              onLineClick={handleLineClick}
+            />
+          )
         )}
       </div>
 
@@ -526,4 +653,4 @@ export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
       )}
     </div>
   );
-}
+});

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   ArchitectureIcon,
@@ -59,7 +59,7 @@ describe('ArchitectureIcon', () => {
     }
   });
 
-  it('displays architecture icons across key routes (Home, Compare, Simulator, Projects)', () => {
+  it('displays architecture icons across key routes (Home, Compare, Simulator, Projects)', async () => {
     for (const route of ['/', '/compare', '/simulator', '/projects']) {
       window.localStorage.clear();
       const { container, unmount } = render(
@@ -68,17 +68,19 @@ describe('ArchitectureIcon', () => {
         </MemoryRouter>
       );
 
-      for (const id of ['modular-monolith', 'microservices', 'serverless', 'event-driven'] as const) {
-        expect(
-          container.querySelectorAll(`svg[data-architecture-icon="${id}"]`).length
-        ).toBeGreaterThan(0);
-      }
+      await waitFor(() => {
+        for (const id of ['modular-monolith', 'microservices', 'serverless', 'event-driven'] as const) {
+          expect(
+            container.querySelectorAll(`svg[data-architecture-icon="${id}"]`).length
+          ).toBeGreaterThan(0);
+        }
 
-      if (route === '/projects') {
-        expect(
-          container.querySelectorAll('svg[data-architecture-icon="hybrid"]').length
-        ).toBeGreaterThan(0);
-      }
+        if (route === '/projects') {
+          expect(
+            container.querySelectorAll('svg[data-architecture-icon="hybrid"]').length
+          ).toBeGreaterThan(0);
+        }
+      });
 
       unmount();
     }

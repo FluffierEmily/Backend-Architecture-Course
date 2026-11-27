@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArchitectureIcon, ArchitectureIconGlyph } from './ArchitectureIcon';
 
-export function ArchitectureDecisionFlowchart() {
+export const ArchitectureDecisionFlowchart = memo(function ArchitectureDecisionFlowchart() {
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
       <div className="mb-4">
@@ -135,9 +136,9 @@ export function ArchitectureDecisionFlowchart() {
       </div>
     </div>
   );
-}
+});
 
-export function StranglerFigDiagram() {
+export const StranglerFigDiagram = memo(function StranglerFigDiagram() {
   return (
     <figure className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1120] p-4">
       <div className="overflow-x-auto">
@@ -219,4 +220,4 @@ export function StranglerFigDiagram() {
       </figcaption>
     </figure>
   );
-}
+});

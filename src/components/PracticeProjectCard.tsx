@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   CheckSquare,
@@ -8,13 +8,13 @@ import {
   Square,
 } from 'lucide-react';
 import type { PracticeProject } from '../types/course';
-import { ARCHITECTURE_BY_ID } from '../data';
+import { ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureIcon, ARCHITECTURE_VISUALS } from './ArchitectureIcon';
 
 interface PracticeProjectCardProps {
   project: PracticeProject;
-  completedMilestones: string[];
+  completedMilestones: string[] | ReadonlySet<string>;
   onToggleMilestone: (milestoneId: string) => void;
   showArchitectureBadge?: boolean;
 }
@@ -27,8 +27,8 @@ function getArchitectureLabel(
     return short ? 'Hybrid / Evolution' : 'Hybrid / Strangler Fig Evolution';
   }
   return short
-    ? ARCHITECTURE_BY_ID[architectureId].shortName
-    : ARCHITECTURE_BY_ID[architectureId].name;
+    ? ARCHITECTURE_META_BY_ID[architectureId].shortName
+    : ARCHITECTURE_META_BY_ID[architectureId].name;
 }
 
 function buildMarkdownBrief(project: PracticeProject): string {
@@ -61,7 +61,30 @@ function buildMarkdownBrief(project: PracticeProject): string {
 const isDrawerMode = (v: unknown): v is 'none' | 'folder' | 'rules' =>
   v === 'none' || v === 'folder' || v === 'rules';
 
-export function PracticeProjectCard({
+function toMilestoneSet(milestones: string[] | ReadonlySet<string>): ReadonlySet<string> {
+  return milestones instanceof Set ? milestones : new Set(milestones);
+}
+
+function areProjectCardPropsEqual(
+  prev: PracticeProjectCardProps,
+  next: PracticeProjectCardProps
+): boolean {
+  if (
+    prev.project !== next.project ||
+    prev.onToggleMilestone !== next.onToggleMilestone ||
+    prev.showArchitectureBadge !== next.showArchitectureBadge
+  ) {
+    return false;
+  }
+  if (prev.completedMilestones === next.completedMilestones) {
+    return true;
+  }
+  const prevSet = toMilestoneSet(prev.completedMilestones);
+  const nextSet = toMilestoneSet(next.completedMilestones);
+  return next.project.milestones.every((m) => prevSet.has(m.id) === nextSet.has(m.id));
+}
+
+export const PracticeProjectCard = memo(function PracticeProjectCard({
   project,
   completedMilestones,
   onToggleMilestone,
@@ -73,10 +96,22 @@ export function PracticeProjectCard({
     isDrawerMode
   );
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
 
-  const doneCount = project.milestones.filter((m) =>
-    completedMilestones.includes(m.id)
-  ).length;
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
+  const completedSet = useMemo(
+    () => toMilestoneSet(completedMilestones),
+    [completedMilestones]
+  );
+
+  const doneCount = project.milestones.filter((m) => completedSet.has(m.id)).length;
   const percentDone =
     project.milestones.length > 0 ? Math.round((doneCount / project.milestones.length) * 100) : 0;
 
@@ -85,7 +120,13 @@ export function PracticeProjectCard({
     try {
       await navigator.clipboard.writeText(md);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = window.setTimeout(() => {
+        setCopied(false);
+        copyTimerRef.current = null;
+      }, 2000);
     } catch {
       setCopied(false);
     }
@@ -170,7 +211,7 @@ export function PracticeProjectCard({
 
         <div className="space-y-1.5">
           {project.milestones.map((m) => {
-            const isChecked = completedMilestones.includes(m.id);
+            const isChecked = completedSet.has(m.id);
             return (
               <button
                 key={m.id}
@@ -254,4 +295,4 @@ export function PracticeProjectCard({
       </div>
     </div>
   );
-}
+}, areProjectCardPropsEqual);

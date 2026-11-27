@@ -1,5 +1,5 @@
 import { DecisionSimulator } from '../components/DecisionSimulator';
-import { SIMULATOR_SCENARIOS } from '../data';
+import { COURSE_COUNTS } from '../data/courseMeta';
 import type { ArchitectureId } from '../types/course';
 
 interface SimulatorPageProps {
@@ -21,7 +21,7 @@ export function SimulatorPage({
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
           <span className="text-indigo-600 dark:text-indigo-400">Architect’s Workbench</span>
           <span className="font-mono text-slate-500 dark:text-slate-400">
-            {bestFitCount}/{SIMULATOR_SCENARIOS.length} optimal · {attemptedCount} simulated
+            {bestFitCount}/{COURSE_COUNTS.simulatorScenarios} optimal · {attemptedCount} simulated
           </span>
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">

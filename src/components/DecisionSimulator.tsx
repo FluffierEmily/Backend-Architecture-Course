@@ -14,7 +14,8 @@ import {
   Play,
   Users,
 } from 'lucide-react';
-import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
+import { ARCHITECTURE_META, ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
+import { SIMULATOR_SCENARIOS } from '../data/simulatorScenarios';
 import type { ArchitectureId, SimulatorOutcome } from '../types/course';
 import { readUiState, usePersistedState, writeUiState } from '../hooks/usePersistedState';
 import {
@@ -62,7 +63,7 @@ const SCORE_AXES: { key: keyof SimulatorOutcome['scores']; label: string }[] = [
   { key: 'faultIsolation', label: 'Fault Isolation' },
 ];
 
-const VALID_ARCH_IDS = new Set<string>(ARCHITECTURE_MODULES.map((m) => m.id));
+const VALID_ARCH_IDS = new Set<string>(ARCHITECTURE_META.map((m) => m.id));
 const isScenarioIdx = (v: unknown): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < SIMULATOR_SCENARIOS.length;
 const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
@@ -128,7 +129,7 @@ export function DecisionSimulator({
 
   const outcome = simulatedArch ? scenario.outcomes[simulatedArch] : null;
   const bestFitOutcome = scenario.outcomes[scenario.bestFit];
-  const bestFitModule = ARCHITECTURE_BY_ID[scenario.bestFit];
+  const bestFitModule = ARCHITECTURE_META_BY_ID[scenario.bestFit];
 
   return (
     <div className="space-y-6">
@@ -276,7 +277,7 @@ export function DecisionSimulator({
             Which architecture do you recommend for {scenario.company}?
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {ARCHITECTURE_MODULES.map((arch) => {
+            {ARCHITECTURE_META.map((arch) => {
               const isPicked = selectedArch === arch.id;
               const visual = ARCHITECTURE_VISUALS[arch.id];
               return (
@@ -337,7 +338,7 @@ export function DecisionSimulator({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
               <ArchitectureIcon architectureId={simulatedArch} className="h-4 w-4" colored />
-              <span>6-Month Outcome · {ARCHITECTURE_BY_ID[simulatedArch].name}</span>
+              <span>6-Month Outcome · {ARCHITECTURE_META_BY_ID[simulatedArch].name}</span>
             </span>
             <span
               className={`rounded-full px-3 py-1 text-xs font-bold ${VERDICT_STYLES[outcome.verdict].badge}`}
@@ -472,7 +473,7 @@ export function DecisionSimulator({
 
             {showCompareAll && (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {ARCHITECTURE_MODULES.map((arch) => {
+                {ARCHITECTURE_META.map((arch) => {
                   const o = scenario.outcomes[arch.id];
                   const style = VERDICT_STYLES[o.verdict];
                   return (

@@ -1,8 +1,9 @@
+import { startTransition } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FoundationsPlayground } from '../components/FoundationsPlayground';
 import { ArchitectureIcon } from '../components/ArchitectureIcon';
-import { BEGINNER_GLOSSARY } from '../data';
+import { BEGINNER_GLOSSARY } from '../data/foundations';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 interface FoundationsPageProps {
@@ -95,7 +96,9 @@ export function FoundationsPage({ isCompleted, onMarkComplete }: FoundationsPage
 
           <button
             type="button"
-            onClick={() => setViewMode((m) => (m === 'guided' ? 'all' : 'guided'))}
+            onClick={() =>
+              startTransition(() => setViewMode((m) => (m === 'guided' ? 'all' : 'guided')))
+            }
             className="pb-3 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
           >
             {viewMode === 'guided' ? 'All Sections' : 'Back to Guided Steps'}

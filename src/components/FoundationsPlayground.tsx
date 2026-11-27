@@ -25,7 +25,8 @@ import {
   Shield,
   Zap,
 } from 'lucide-react';
-import { ARCHITECTURE_BY_ID, FOUNDATION_BLOCKS } from '../data';
+import { ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
+import { FOUNDATION_BLOCKS } from '../data/foundations';
 import type { FoundationBlock } from '../types/course';
 import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
 import { FoundationDiagram, hasFoundationDiagram } from './FoundationDiagram';
@@ -253,7 +254,7 @@ export function FoundationsPlayground({
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span>Used in:</span>
               {activeBlock.relevantArchitectures.map((archId) => {
-                const mod = ARCHITECTURE_BY_ID[archId];
+                const mod = ARCHITECTURE_META_BY_ID[archId];
                 return (
                   <Link
                     key={archId}

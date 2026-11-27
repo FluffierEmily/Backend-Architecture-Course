@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ArchitectureId } from '../types/course';
-import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
+import { ARCHITECTURE_META, SIMULATOR_SCENARIO_META } from '../data/courseMeta';
 
 const STORAGE_KEY = 'backend-arch-course-progress-v1';
 
@@ -117,14 +117,14 @@ export function useCourseProgress() {
 
   // Weighted overall completion: Foundations + 4 Modules + at least 4 Simulator Scenarios
   const overallPercent = useMemo(() => {
-    const coreLessonsTotal = 1 + ARCHITECTURE_MODULES.length; // 5
-    const coreLessonsDone = ['foundations', ...ARCHITECTURE_MODULES.map((m) => m.id)].filter((id) =>
+    const coreLessonsTotal = 1 + ARCHITECTURE_META.length; // 5
+    const coreLessonsDone = ['foundations', ...ARCHITECTURE_META.map((m) => m.id)].filter((id) =>
       progress.completedSections.includes(id)
     ).length;
 
-    const simTotal = SIMULATOR_SCENARIOS.length;
+    const simTotal = SIMULATOR_SCENARIO_META.length;
     const simDone = Object.keys(progress.simulatorChoices).filter((id) =>
-      SIMULATOR_SCENARIOS.some((s) => s.id === id)
+      SIMULATOR_SCENARIO_META.some((s) => s.id === id)
     ).length;
 
     const totalUnits = coreLessonsTotal + simTotal;
@@ -133,7 +133,7 @@ export function useCourseProgress() {
   }, [progress.completedSections, progress.simulatorChoices]);
 
   const bestFitSimCount = useMemo(() => {
-    return SIMULATOR_SCENARIOS.filter(
+    return SIMULATOR_SCENARIO_META.filter(
       (s) => progress.simulatorChoices[s.id] === s.bestFit
     ).length;
   }, [progress.simulatorChoices]);

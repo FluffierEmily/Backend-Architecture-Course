@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, startTransition, Suspense, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   AlertOctagon,
@@ -13,7 +13,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
-import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES } from '../data';
+import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES } from '../data/architectures';
 import type { ArchitectureId, ArchitectureModule } from '../types/course';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
 import {
@@ -21,12 +21,26 @@ import {
   ArchitectureIconBadge,
   ARCHITECTURE_VISUALS,
 } from '../components/ArchitectureIcon';
-import { CodeComparison } from '../components/CodeComparison';
 import { MiniDecisionCheck } from '../components/MiniDecisionCheck';
 import { PatternDiagram, hasPatternDiagram } from '../components/PatternDiagram';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { loadCodeComparison, prefetchCodeComparison } from '../routes/prefetch';
+
+const CodeComparison = lazy(() =>
+  loadCodeComparison().then((m) => ({ default: m.CodeComparison }))
+);
+
+function CodeComparisonFallback() {
+  return (
+    <div
+      className="h-80 animate-pulse rounded-2xl border border-stone-200 bg-white p-6 dark:border-slate-700/80 dark:bg-[#162033]"
+      role="status"
+      aria-label="Loading code comparison"
+    />
+  );
+}
 
 interface ModulePageProps {
   progress: CourseProgressState;
@@ -135,6 +149,10 @@ function ModulePageContent({
   const activeConcept = mod.deepDiveConcepts[conceptIdx] ?? mod.deepDiveConcepts[0];
   const activeCodeItem = mod.codeComparisons[codeIdx] ?? mod.codeComparisons[0];
   const visual = ARCHITECTURE_VISUALS[mod.id];
+  const completedMilestonesSet = useMemo(
+    () => new Set(progress.completedMilestones),
+    [progress.completedMilestones]
+  );
 
   return (
     <div className="space-y-8">
@@ -182,6 +200,8 @@ function ModulePageContent({
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setStepIdx(i)}
+                    onMouseEnter={step.id === 'code' ? prefetchCodeComparison : undefined}
+                    onFocus={step.id === 'code' ? prefetchCodeComparison : undefined}
                     className={`border-b-2 pb-3 text-sm font-semibold transition ${
                       isActive
                         ? 'border-indigo-500 text-slate-900 dark:text-white'
@@ -201,7 +221,11 @@ function ModulePageContent({
 
           <button
             type="button"
-            onClick={() => setViewMode((m) => (m === 'guided' ? 'all' : 'guided'))}
+            onMouseEnter={prefetchCodeComparison}
+            onFocus={prefetchCodeComparison}
+            onClick={() =>
+              startTransition(() => setViewMode((m) => (m === 'guided' ? 'all' : 'guided')))
+            }
             className="pb-3 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
           >
             {viewMode === 'guided' ? 'All Sections' : 'Back to Guided Steps'}
@@ -548,19 +572,21 @@ function ModulePageContent({
             </div>
           )}
 
-          {viewMode === 'guided' ? (
-            <CodeComparison
-              key={activeCodeItem.id}
-              item={activeCodeItem}
-              onInspect={onInspectComparison}
-            />
-          ) : (
-            <div className="space-y-8">
-              {mod.codeComparisons.map((item) => (
-                <CodeComparison key={item.id} item={item} onInspect={onInspectComparison} />
-              ))}
-            </div>
-          )}
+          <Suspense fallback={<CodeComparisonFallback />}>
+            {viewMode === 'guided' ? (
+              <CodeComparison
+                key={activeCodeItem.id}
+                item={activeCodeItem}
+                onInspect={onInspectComparison}
+              />
+            ) : (
+              <div className="space-y-8">
+                {mod.codeComparisons.map((item) => (
+                  <CodeComparison key={item.id} item={item} onInspect={onInspectComparison} />
+                ))}
+              </div>
+            )}
+          </Suspense>
         </section>
       )}
 
@@ -697,7 +723,7 @@ function ModulePageContent({
               <PracticeProjectCard
                 key={project.id}
                 project={project}
-                completedMilestones={progress.completedMilestones}
+                completedMilestones={completedMilestonesSet}
                 onToggleMilestone={onToggleMilestone}
               />
             ))}

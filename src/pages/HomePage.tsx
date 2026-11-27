@@ -1,12 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, CheckCircle2, Compass, FolderGit2 } from 'lucide-react';
-import {
-  ALL_PRACTICE_PROJECTS,
-  ARCHITECTURE_MODULES,
-  BEGINNER_GLOSSARY,
-  FOUNDATION_BLOCKS,
-  SIMULATOR_SCENARIOS,
-} from '../data';
+import { ARCHITECTURE_META, COURSE_COUNTS } from '../data/courseMeta';
+import { prefetchRoute } from '../routes/prefetch';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import type { ArchitectureId } from '../types/course';
 import {
@@ -34,14 +29,14 @@ function getNextRecommendedStep(progress: CourseProgressState): {
     };
   }
 
-  const nextMod = ARCHITECTURE_MODULES.find(
+  const nextMod = ARCHITECTURE_META.find(
     (m) => !progress.completedSections.includes(m.id)
   );
   if (nextMod) {
     return {
       label: `Continue: ${nextMod.order}. ${nextMod.shortName}`,
       to: `/modules/${nextMod.id}`,
-      note: `Up next · ${nextMod.scenario.company} (${nextMod.scenario.domain})`,
+      note: `Up next · ${nextMod.company} (${nextMod.domain})`,
       architectureId: nextMod.id,
     };
   }
@@ -49,7 +44,7 @@ function getNextRecommendedStep(progress: CourseProgressState): {
   return {
     label: 'Open Decision Simulator',
     to: '/simulator',
-    note: `All modules complete · Test your instincts on ${SIMULATOR_SCENARIOS.length} company briefs`,
+    note: `All modules complete · Test your instincts on ${COURSE_COUNTS.simulatorScenarios} company briefs`,
   };
 }
 
@@ -81,6 +76,8 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
         <div className="mt-7 flex flex-wrap items-center gap-5">
           <Link
             to={nextStep.to}
+            onMouseEnter={() => prefetchRoute(nextStep.to)}
+            onFocus={() => prefetchRoute(nextStep.to)}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
           >
             {nextStep.architectureId && (
@@ -92,6 +89,8 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
 
           <Link
             to="/simulator"
+            onMouseEnter={() => prefetchRoute('/simulator')}
+            onFocus={() => prefetchRoute('/simulator')}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
           >
             <Compass className="h-4 w-4" />
@@ -100,10 +99,12 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
 
           <Link
             to="/projects"
+            onMouseEnter={() => prefetchRoute('/projects')}
+            onFocus={() => prefetchRoute('/projects')}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
           >
             <FolderGit2 className="h-4 w-4" />
-            Browse {ALL_PRACTICE_PROJECTS.length} Practice Projects
+            Browse {COURSE_COUNTS.practiceProjects} Practice Projects
           </Link>
         </div>
 
@@ -122,6 +123,8 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
         {/* Module 0: Foundations Row */}
         <Link
           to="/foundations"
+          onMouseEnter={() => prefetchRoute('/foundations')}
+          onFocus={() => prefetchRoute('/foundations')}
           className="group flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-xs transition hover:border-indigo-500/50 dark:border-slate-700/80 dark:bg-[#162033] dark:hover:border-indigo-400/50"
         >
           <div className="flex items-start gap-4">
@@ -141,8 +144,8 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
                 Backend Building Blocks: Gateways, Concurrency, Databases &amp; Resilience
               </h3>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {FOUNDATION_BLOCKS.length} plain-English building blocks, 3 interactive resilience
-                labs, and a {BEGINNER_GLOSSARY.length}-term pocket glossary.
+                {COURSE_COUNTS.foundationBlocks} plain-English building blocks, 3 interactive resilience
+                labs, and a {COURSE_COUNTS.beginnerGlossary}-term pocket glossary.
               </p>
             </div>
           </div>
@@ -151,13 +154,16 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
 
         {/* 4 Core Architecture Modules */}
         <div className="grid gap-4 md:grid-cols-2">
-          {ARCHITECTURE_MODULES.map((mod) => {
+          {ARCHITECTURE_META.map((mod) => {
             const isDone = progress.completedSections.includes(mod.id);
             const visual = ARCHITECTURE_VISUALS[mod.id];
+            const modPath = `/modules/${mod.id}`;
             return (
               <Link
                 key={mod.id}
-                to={`/modules/${mod.id}`}
+                to={modPath}
+                onMouseEnter={() => prefetchRoute(modPath)}
+                onFocus={() => prefetchRoute(modPath)}
                 className={`group flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-6 shadow-xs transition dark:border-slate-700/80 dark:bg-[#162033] ${visual.hoverBorder}`}
               >
                 <div className="flex items-start gap-4">
@@ -165,7 +171,7 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2 text-xs font-semibold">
                       <span className={visual.eyebrowColor}>
-                        Module {mod.order} · {mod.scenario.company}
+                        Module {mod.order} · {mod.company}
                       </span>
                       {isDone && (
                         <span className="inline-flex shrink-0 items-center gap-1 text-emerald-600 dark:text-emerald-400">
@@ -184,7 +190,7 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
 
                 <div className="mt-5 flex items-center justify-between border-t border-stone-100 pt-3.5 text-xs font-medium text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
                   <span>
-                    {mod.codeComparisons.length} code comparisons · {mod.practiceProjects.length}{' '}
+                    {mod.codeComparisonsCount} code comparisons · {mod.practiceProjectsCount}{' '}
                     projects
                   </span>
                   <ArrowRight className="h-3.5 w-3.5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-indigo-500 dark:text-slate-500 dark:group-hover:text-indigo-300" />

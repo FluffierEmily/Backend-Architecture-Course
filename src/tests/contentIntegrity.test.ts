@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_PRACTICE_PROJECTS,
+  ARCHITECTURE_META,
   ARCHITECTURE_MODULES,
   BEGINNER_GLOSSARY,
+  COURSE_COUNTS,
   FOUNDATION_BLOCKS,
   HYBRID_CAPSTONE_PROJECTS,
+  SIMULATOR_SCENARIO_META,
   SIMULATOR_SCENARIOS,
 } from '../data';
 import type { ArchitectureId } from '../types/course';
@@ -133,5 +136,32 @@ describe('Course content integrity', () => {
     expect(ids).toContain('safe-deployments');
     expect(ids).toContain('multi-tenancy');
     expect(ids).toContain('availability-dr');
+  });
+
+  it('keeps lightweight courseMeta in sync with full course data modules', () => {
+    expect(ARCHITECTURE_META).toEqual(
+      ARCHITECTURE_MODULES.map((m) => ({
+        id: m.id,
+        order: m.order,
+        name: m.name,
+        shortName: m.shortName,
+        tagline: m.tagline,
+        company: m.scenario.company,
+        domain: m.scenario.domain,
+        codeComparisonsCount: m.codeComparisons.length,
+        practiceProjectsCount: m.practiceProjects.length,
+      }))
+    );
+
+    expect(SIMULATOR_SCENARIO_META).toEqual(
+      SIMULATOR_SCENARIOS.map((s) => ({ id: s.id, bestFit: s.bestFit }))
+    );
+
+    expect(COURSE_COUNTS).toEqual({
+      foundationBlocks: FOUNDATION_BLOCKS.length,
+      beginnerGlossary: BEGINNER_GLOSSARY.length,
+      practiceProjects: ALL_PRACTICE_PROJECTS.length,
+      simulatorScenarios: SIMULATOR_SCENARIOS.length,
+    });
   });
 });

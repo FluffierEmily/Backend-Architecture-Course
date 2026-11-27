@@ -18,10 +18,12 @@ describe('AppRoutes integration', () => {
     window.scrollTo = (() => {}) as typeof window.scrollTo;
   });
 
-  it('renders Home page and links to Foundations, Simulator, and Projects', () => {
+  it('renders Home page and links to Foundations, Simulator, and Projects', async () => {
     renderAt('/');
     expect(
-      screen.getByRole('heading', { name: /learn how to choose & design backend architectures/i })
+      await screen.findByRole('heading', {
+        name: /learn how to choose & design backend architectures/i,
+      })
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /start with foundations/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /try decision simulator/i })).toBeInTheDocument();
@@ -33,11 +35,11 @@ describe('AppRoutes integration', () => {
     expect(document.title).toBe('Interactive Backend Architectures Course');
   });
 
-  it('renders Foundations page with guided steps and interactive resilience labs', () => {
+  it('renders Foundations page with guided steps and interactive resilience labs', async () => {
     renderAt('/foundations');
     expect(document.title).toBe('Foundations · Interactive Backend Architectures Course');
     expect(
-      screen.getByRole('heading', { name: /backend architecture foundations/i })
+      await screen.findByRole('heading', { name: /backend architecture foundations/i })
     ).toBeInTheDocument();
 
     // Navigate to Step 2 (Interactive Labs)
@@ -61,7 +63,7 @@ describe('AppRoutes integration', () => {
     expect(screen.getByText(/Zero Loss!/i)).toBeInTheDocument();
   });
 
-  it('renders all 4 architecture module pages with guided steps and All Sections mode', () => {
+  it('renders all 4 architecture module pages with guided steps and All Sections mode', async () => {
     const slugs = [
       { slug: 'modular-monolith', heading: 'Modular Monolith' },
       { slug: 'microservices', heading: 'Microservices' },
@@ -71,20 +73,23 @@ describe('AppRoutes integration', () => {
 
     for (const { slug, heading } of slugs) {
       const { unmount } = renderAt(`/modules/${slug}`);
-      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
       // Guided Steps starts cleanly on Step 1 (Story)
       expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
 
       // Switching to All Sections reveals diagram and code comparisons together
       fireEvent.click(screen.getByRole('button', { name: /all sections/i }));
-      expect(screen.getByText(/Problematic vs\. Refactored Examples/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Problematic vs\. Refactored Examples/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /simulate failure \/ spike/i })).toBeInTheDocument();
       unmount();
     }
   });
 
-  it('opens the auto-hiding sidebar via the left edge trigger and toggles Calm Motion', () => {
+  it('opens the auto-hiding sidebar via the left edge trigger and toggles Calm Motion', async () => {
     renderAt('/');
+    await screen.findByRole('heading', {
+      name: /learn how to choose & design backend architectures/i,
+    });
     const edgeTrigger = screen.getByRole('button', { name: /open navigation sidebar/i });
     expect(edgeTrigger).toHaveAttribute('aria-expanded', 'false');
 
@@ -100,10 +105,10 @@ describe('AppRoutes integration', () => {
     expect(edgeTrigger).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('renders Compare page and highlights matching architectures on priority selection', () => {
+  it('renders Compare page and highlights matching architectures on priority selection', async () => {
     renderAt('/compare');
     expect(
-      screen.getByRole('heading', { name: /compare all 4 backend architectures/i })
+      await screen.findByRole('heading', { name: /compare all 4 backend architectures/i })
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /spiky traffic \/ zero idle cost/i }));
@@ -131,11 +136,11 @@ describe('AppRoutes integration', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders Practice Projects gallery, filters by difficulty and Hybrid tab, and toggles milestones', () => {
+  it('renders Practice Projects gallery, filters by difficulty and Hybrid tab, and toggles milestones', async () => {
     const totalMilestones = ALL_PRACTICE_PROJECTS.reduce((sum, p) => sum + p.milestones.length, 0);
     renderAt('/projects');
     expect(
-      screen.getByRole('heading', { name: /practice projects gallery/i })
+      await screen.findByRole('heading', { name: /practice projects gallery/i })
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /hybrid \/ evolution/i }));
@@ -157,14 +162,15 @@ describe('AppRoutes integration', () => {
     ).toBeInTheDocument();
   });
 
-  it('persists the active page and selected elements across a simulated page refresh', () => {
+  it('persists the active page and selected elements across a simulated page refresh', async () => {
     // 1. Open Serverless module, go to Step 3 (Code), switch to Example 2 & Annotation 2
     const firstVisit = renderAt('/modules/serverless');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Serverless' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /3\. code/i }));
-    fireEvent.click(screen.getByRole('button', { name: /next code example/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /next code example/i }));
     expect(screen.getByText(/Example 2 of 3/i)).toBeInTheDocument();
 
-    const secondFocusTab = screen.getByRole('tab', { name: /2\. clear async contract/i });
+    const secondFocusTab = await screen.findByRole('tab', { name: /2\. clear async contract/i });
     fireEvent.click(secondFocusTab);
     expect(secondFocusTab).toHaveAttribute('aria-selected', 'true');
 
@@ -172,9 +178,9 @@ describe('AppRoutes integration', () => {
 
     // 2. Simulate reopening/refreshing at root '/' -> auto-restores Serverless + Step 3 + Example 2 + Annotation 2
     const refreshed = renderAt('/');
-    expect(screen.getByRole('heading', { level: 1, name: 'Serverless' })).toBeInTheDocument();
-    expect(screen.getByText(/Example 2 of 3/i)).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /2\. clear async contract/i })).toHaveAttribute(
+    expect(await screen.findByRole('heading', { level: 1, name: 'Serverless' })).toBeInTheDocument();
+    expect(await screen.findByText(/Example 2 of 3/i)).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: /2\. clear async contract/i })).toHaveAttribute(
       'aria-selected',
       'true'
     );
@@ -182,13 +188,16 @@ describe('AppRoutes integration', () => {
 
     // 3. Open Practice Projects, pick Hybrid tab & Folder Layout, then refresh '/projects'
     const projectsVisit = renderAt('/projects');
+    expect(
+      await screen.findByRole('heading', { name: /practice projects gallery/i })
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /hybrid \/ evolution/i }));
     fireEvent.click(screen.getByRole('button', { name: /folder layout/i }));
     expect(screen.getByText(/strangler-capstone\//i)).toBeInTheDocument();
     projectsVisit.unmount();
 
     const projectsRefreshed = renderAt('/projects');
-    expect(screen.getByRole('tab', { name: /hybrid \/ evolution/i })).toHaveAttribute(
+    expect(await screen.findByRole('tab', { name: /hybrid \/ evolution/i })).toHaveAttribute(
       'aria-selected',
       'true'
     );
@@ -196,9 +205,12 @@ describe('AppRoutes integration', () => {
     projectsRefreshed.unmount();
   });
 
-  it('renders visual diagrams selectively where they aid understanding', () => {
+  it('renders visual diagrams selectively where they aid understanding', async () => {
     // 1. Foundations: first block (client-http) stays clean without redundant SVG; caching renders its Cache-Aside diagram
     const foundations = renderAt('/foundations');
+    expect(
+      await screen.findByRole('heading', { name: /backend architecture foundations/i })
+    ).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /block 1 of/i }));
     fireEvent.click(screen.getByRole('button', { name: /7\. caching/i }));
@@ -209,6 +221,7 @@ describe('AppRoutes integration', () => {
 
     // 2. Microservices Step 2 shows Saga forward + compensating actions diagram
     const ms = renderAt('/modules/microservices');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Microservices' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /2\. visual flow/i }));
     expect(
       screen.getByRole('img', { name: /saga workflow diagram showing reserve stock/i })
@@ -218,7 +231,7 @@ describe('AppRoutes integration', () => {
     // 3. Compare page shows Decision Flowchart (Step 1) and Strangler Fig diagram (Step 2)
     const compare = renderAt('/compare');
     expect(
-      screen.getByRole('img', { name: /decision flowchart showing when to choose/i })
+      await screen.findByRole('img', { name: /decision flowchart showing when to choose/i })
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /2\. hybrids & strangler fig/i }));
     expect(
