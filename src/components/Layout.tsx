@@ -17,7 +17,7 @@ import {
   Sun,
   X,
 } from 'lucide-react';
-import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
+import { ALL_PRACTICE_PROJECTS, ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import type { ThemeMode } from '../hooks/useTheme';
 import type { ReadingPrefs } from '../hooks/useReadingPrefs';
@@ -283,7 +283,7 @@ export function Layout({
                     Practice Projects
                   </span>
                   <span className="rounded-full bg-stone-200 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    8
+                    {ALL_PRACTICE_PROJECTS.length}
                   </span>
                 </NavLink>
               </div>

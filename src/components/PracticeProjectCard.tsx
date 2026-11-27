@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { PracticeProject } from '../types/course';
 import { ARCHITECTURE_BY_ID } from '../data';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface PracticeProjectCardProps {
   project: PracticeProject;
@@ -56,13 +57,20 @@ function buildMarkdownBrief(project: PracticeProject): string {
   ].join('\n');
 }
 
+const isDrawerMode = (v: unknown): v is 'none' | 'folder' | 'rules' =>
+  v === 'none' || v === 'folder' || v === 'rules';
+
 export function PracticeProjectCard({
   project,
   completedMilestones,
   onToggleMilestone,
   showArchitectureBadge = false,
 }: PracticeProjectCardProps) {
-  const [openDrawer, setOpenDrawer] = useState<'none' | 'folder' | 'rules'>('none');
+  const [openDrawer, setOpenDrawer] = usePersistedState<'none' | 'folder' | 'rules'>(
+    `project.${project.id}.openDrawer`,
+    'none',
+    isDrawerMode
+  );
   const [copied, setCopied] = useState(false);
 
   const doneCount = project.milestones.filter((m) =>

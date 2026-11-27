@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Compass, Copy } from 'lucide-react';
 import { ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId } from '../types/course';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface PriorityFilter {
   id: string;
@@ -180,11 +181,34 @@ const COST_TIERS: Record<
   },
 };
 
+const isCompareViewMode = (v: unknown): v is 'guided' | 'all' => v === 'guided' || v === 'all';
+const isCompareStepIdx = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < COMPARE_STEPS.length;
+const isPriorityId = (v: unknown): v is string =>
+  typeof v === 'string' && PRIORITY_FILTERS.some((p) => p.id === v);
+const isTrafficTier = (v: unknown): v is TrafficTier => v === '10k' || v === '10m';
+
 export function ComparePage() {
-  const [viewMode, setViewMode] = useState<'guided' | 'all'>('guided');
-  const [stepIdx, setStepIdx] = useState(0);
-  const [activePriority, setActivePriority] = useState<string>('all');
-  const [trafficTier, setTrafficTier] = useState<TrafficTier>('10k');
+  const [viewMode, setViewMode] = usePersistedState<'guided' | 'all'>(
+    'compare.viewMode',
+    'guided',
+    isCompareViewMode
+  );
+  const [stepIdx, setStepIdx] = usePersistedState<number>(
+    'compare.stepIdx',
+    0,
+    isCompareStepIdx
+  );
+  const [activePriority, setActivePriority] = usePersistedState<string>(
+    'compare.activePriority',
+    'all',
+    isPriorityId
+  );
+  const [trafficTier, setTrafficTier] = usePersistedState<TrafficTier>(
+    'compare.trafficTier',
+    '10k',
+    isTrafficTier
+  );
   const [dau, setDau] = useState(25000);
   const [reqPerUser, setReqPerUser] = useState(40);
   const [peakMultiplier, setPeakMultiplier] = useState(5);

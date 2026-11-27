@@ -1,23 +1,44 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import type { MiniDecisionCheckItem } from '../types/course';
 import { ARCHITECTURE_BY_ID } from '../data';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface MiniDecisionCheckProps {
+  storageKey?: string;
   architectureName: string;
   checks: MiniDecisionCheckItem[];
   onCompleteCheck?: (checkId: string) => void;
 }
 
+const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
+const isAnswerRecord = (v: unknown): v is Record<string, boolean> =>
+  Boolean(v) &&
+  typeof v === 'object' &&
+  !Array.isArray(v) &&
+  Object.values(v as Record<string, unknown>).every((val) => typeof val === 'boolean');
+
 export function MiniDecisionCheck({
+  storageKey = 'default',
   architectureName,
   checks,
   onCompleteCheck,
 }: MiniDecisionCheckProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [showAll, setShowAll] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, boolean>>({});
+  const [activeIndex, setActiveIndex] = usePersistedState<number>(
+    `minicheck.${storageKey}.activeIndex`,
+    0,
+    (v): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < checks.length
+  );
+  const [showAll, setShowAll] = usePersistedState<boolean>(
+    `minicheck.${storageKey}.showAll`,
+    false,
+    isBoolean
+  );
+  const [answers, setAnswers] = usePersistedState<Record<string, boolean>>(
+    `minicheck.${storageKey}.answers`,
+    {},
+    isAnswerRecord
+  );
 
   const handleAnswer = (checkId: string, choice: boolean) => {
     setAnswers((prev) => ({ ...prev, [checkId]: choice }));

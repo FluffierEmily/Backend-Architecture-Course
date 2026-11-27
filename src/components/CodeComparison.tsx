@@ -9,6 +9,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import type { CodeAnnotation, CodeComparisonItem } from '../types/course';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface CodeComparisonProps {
   item: CodeComparisonItem;
@@ -31,9 +32,19 @@ function findAnnotationForLine(
   );
 }
 
+const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
+
 export function CodeComparison({ item, onInspect }: CodeComparisonProps) {
-  const [selectedId, setSelectedId] = useState<string>(item.annotations[0]?.id ?? '');
-  const [showAllExplainers, setShowAllExplainers] = useState(false);
+  const [selectedId, setSelectedId] = usePersistedState<string>(
+    `code.${item.id}.selectedAnnotationId`,
+    item.annotations[0]?.id ?? '',
+    (v): v is string => typeof v === 'string' && item.annotations.some((a) => a.id === v)
+  );
+  const [showAllExplainers, setShowAllExplainers] = usePersistedState<boolean>(
+    `code.${item.id}.showAllExplainers`,
+    false,
+    isBoolean
+  );
   const [mobileTab, setMobileTab] = useState<ViewTab>('split');
   const [quizMode, setQuizMode] = useState(false);
   const [spottedIds, setSpottedIds] = useState<string[]>([]);

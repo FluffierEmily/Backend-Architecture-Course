@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   AlertOctagon,
@@ -14,12 +14,13 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES } from '../data';
-import type { ArchitectureId } from '../types/course';
+import type { ArchitectureId, ArchitectureModule } from '../types/course';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
 import { CodeComparison } from '../components/CodeComparison';
 import { MiniDecisionCheck } from '../components/MiniDecisionCheck';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface ModulePageProps {
   progress: CourseProgressState;
@@ -40,37 +41,68 @@ const MODULE_STEPS = [
 
 type ModuleStepId = (typeof MODULE_STEPS)[number]['id'];
 
-export function ModulePage({
+const isViewMode = (v: unknown): v is 'guided' | 'all' => v === 'guided' || v === 'all';
+const isPracticeTab = (v: unknown): v is 'do' | 'avoid' => v === 'do' || v === 'avoid';
+const isNumberArray = (v: unknown): v is number[] =>
+  Array.isArray(v) && v.every((item) => typeof item === 'number' && Number.isInteger(item));
+
+export function ModulePage(props: ModulePageProps) {
+  const { slug } = useParams<{ slug: string }>();
+  const mod = slug ? ARCHITECTURE_BY_ID[slug as ArchitectureId] : undefined;
+
+  if (!mod) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <ModulePageContent key={mod.id} mod={mod} {...props} />;
+}
+
+interface ModulePageContentProps extends ModulePageProps {
+  mod: ArchitectureModule;
+}
+
+function ModulePageContent({
+  mod,
   progress,
   onMarkSectionComplete,
   onInspectComparison,
   onCompleteMiniCheck,
   onToggleMilestone,
-}: ModulePageProps) {
-  const { slug } = useParams<{ slug: string }>();
-  const mod = slug ? ARCHITECTURE_BY_ID[slug as ArchitectureId] : undefined;
-
-  const [viewMode, setViewMode] = useState<'guided' | 'all'>('guided');
-  const [stepIdx, setStepIdx] = useState(0);
-  const [conceptIdx, setConceptIdx] = useState(0);
+}: ModulePageContentProps) {
+  const keyPrefix = `module.${mod.id}`;
+  const [viewMode, setViewMode] = usePersistedState<'guided' | 'all'>(
+    `${keyPrefix}.viewMode`,
+    'guided',
+    isViewMode
+  );
+  const [stepIdx, setStepIdx] = usePersistedState<number>(
+    `${keyPrefix}.stepIdx`,
+    0,
+    (v): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < MODULE_STEPS.length
+  );
+  const [conceptIdx, setConceptIdx] = usePersistedState<number>(
+    `${keyPrefix}.conceptIdx`,
+    0,
+    (v): v is number =>
+      typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < mod.deepDiveConcepts.length
+  );
   const [conceptJumpOpen, setConceptJumpOpen] = useState(false);
-  const [visitedConcepts, setVisitedConcepts] = useState<number[]>([0]);
-  const [codeIdx, setCodeIdx] = useState(0);
-  const [practiceTab, setPracticeTab] = useState<'do' | 'avoid'>('do');
-
-  // Reset per-module indices cleanly whenever switching modules
-  useEffect(() => {
-    setStepIdx(0);
-    setConceptIdx(0);
-    setConceptJumpOpen(false);
-    setVisitedConcepts([0]);
-    setCodeIdx(0);
-    setPracticeTab('do');
-  }, [slug]);
-
-  if (!mod) {
-    return <Navigate to="/" replace />;
-  }
+  const [visitedConcepts, setVisitedConcepts] = usePersistedState<number[]>(
+    `${keyPrefix}.visitedConcepts`,
+    [0],
+    isNumberArray
+  );
+  const [codeIdx, setCodeIdx] = usePersistedState<number>(
+    `${keyPrefix}.codeIdx`,
+    0,
+    (v): v is number =>
+      typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < mod.codeComparisons.length
+  );
+  const [practiceTab, setPracticeTab] = usePersistedState<'do' | 'avoid'>(
+    `${keyPrefix}.practiceTab`,
+    'do',
+    isPracticeTab
+  );
 
   const currentIdx = ARCHITECTURE_MODULES.findIndex((m) => m.id === mod.id);
   const prevMod = currentIdx > 0 ? ARCHITECTURE_MODULES[currentIdx - 1] : null;
@@ -246,7 +278,7 @@ export function ModulePage({
       {isVisible('diagram') && (
         <div className="space-y-8">
           <section id="diagram">
-            <ArchitectureDiagram key={mod.id} data={mod.diagram} />
+            <ArchitectureDiagram key={mod.id} storageKey={mod.id} data={mod.diagram} />
           </section>
 
           <section id="concepts" className="space-y-4">
@@ -616,6 +648,7 @@ export function ModulePage({
           </div>
           <MiniDecisionCheck
             key={mod.id}
+            storageKey={mod.id}
             architectureName={mod.shortName}
             checks={mod.miniChecks}
             onCompleteCheck={onCompleteMiniCheck}

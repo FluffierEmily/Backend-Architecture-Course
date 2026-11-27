@@ -1,9 +1,10 @@
-import { useState } from 'react';
 import { Activity, AlertOctagon } from 'lucide-react';
 import type { ArchitectureDiagramData, DiagramNode } from '../types/course';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface ArchitectureDiagramProps {
   data: ArchitectureDiagramData;
+  storageKey?: string;
 }
 
 const NODE_COLORS: Record<DiagramNode['kind'], { fill: string; stroke: string; badge: string }> = {
@@ -16,9 +17,19 @@ const NODE_COLORS: Record<DiagramNode['kind'], { fill: string; stroke: string; b
   database: { fill: '#312e81', stroke: '#a78bfa', badge: 'Database' },
 };
 
-export function ArchitectureDiagram({ data }: ArchitectureDiagramProps) {
-  const [failureMode, setFailureMode] = useState(false);
-  const [selectedNodeId, setSelectedNodeId] = useState<string>(data.nodes[0]?.id ?? '');
+const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
+
+export function ArchitectureDiagram({ data, storageKey = 'default' }: ArchitectureDiagramProps) {
+  const [failureMode, setFailureMode] = usePersistedState<boolean>(
+    `diagram.${storageKey}.failureMode`,
+    false,
+    isBoolean
+  );
+  const [selectedNodeId, setSelectedNodeId] = usePersistedState<string>(
+    `diagram.${storageKey}.selectedNodeId`,
+    data.nodes[0]?.id ?? '',
+    (v): v is string => typeof v === 'string' && data.nodes.some((n) => n.id === v)
+  );
 
   const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
   const selectedNode = nodeMap.get(selectedNodeId) ?? data.nodes[0];

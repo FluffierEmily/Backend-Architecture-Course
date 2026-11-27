@@ -156,4 +156,43 @@ describe('AppRoutes integration', () => {
       screen.getByText(new RegExp(`1 / ${totalMilestones} Milestones Checked`, 'i'))
     ).toBeInTheDocument();
   });
+
+  it('persists the active page and selected elements across a simulated page refresh', () => {
+    // 1. Open Serverless module, go to Step 3 (Code), switch to Example 2 & Annotation 2
+    const firstVisit = renderAt('/modules/serverless');
+    fireEvent.click(screen.getByRole('tab', { name: /3\. code/i }));
+    fireEvent.click(screen.getByRole('button', { name: /next code example/i }));
+    expect(screen.getByText(/Example 2 of 3/i)).toBeInTheDocument();
+
+    const secondFocusTab = screen.getByRole('tab', { name: /2\. clear async contract/i });
+    fireEvent.click(secondFocusTab);
+    expect(secondFocusTab).toHaveAttribute('aria-selected', 'true');
+
+    firstVisit.unmount();
+
+    // 2. Simulate reopening/refreshing at root '/' -> auto-restores Serverless + Step 3 + Example 2 + Annotation 2
+    const refreshed = renderAt('/');
+    expect(screen.getByRole('heading', { level: 1, name: 'Serverless' })).toBeInTheDocument();
+    expect(screen.getByText(/Example 2 of 3/i)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /2\. clear async contract/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    refreshed.unmount();
+
+    // 3. Open Practice Projects, pick Hybrid tab & Folder Layout, then refresh '/projects'
+    const projectsVisit = renderAt('/projects');
+    fireEvent.click(screen.getByRole('tab', { name: /hybrid \/ evolution/i }));
+    fireEvent.click(screen.getByRole('button', { name: /folder layout/i }));
+    expect(screen.getByText(/strangler-capstone\//i)).toBeInTheDocument();
+    projectsVisit.unmount();
+
+    const projectsRefreshed = renderAt('/projects');
+    expect(screen.getByRole('tab', { name: /hybrid \/ evolution/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByText(/strangler-capstone\//i)).toBeInTheDocument();
+    projectsRefreshed.unmount();
+  });
 });

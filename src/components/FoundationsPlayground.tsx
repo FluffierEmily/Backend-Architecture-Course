@@ -28,6 +28,7 @@ import {
 import { ARCHITECTURE_BY_ID, FOUNDATION_BLOCKS } from '../data';
 import type { FoundationBlock } from '../types/course';
 import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 const BLOCK_ICONS: Record<FoundationBlock['icon'], typeof Globe> = {
   globe: Globe,
@@ -55,15 +56,34 @@ interface FoundationsPlaygroundProps {
   onFinishBlocks?: () => void;
 }
 
+const isBlockIndex = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < FOUNDATION_BLOCKS.length;
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((item) => typeof item === 'string');
+const isLabId = (v: unknown): v is 'spike' | 'breaker' | 'reliability' =>
+  v === 'spike' || v === 'breaker' || v === 'reliability';
+
 export function FoundationsPlayground({
   section = 'both',
   onFinishBlocks,
 }: FoundationsPlaygroundProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [visitedIds, setVisitedIds] = useState<string[]>([FOUNDATION_BLOCKS[0].id]);
+  const [activeIndex, setActiveIndex] = usePersistedState<number>(
+    'foundations.activeBlockIdx',
+    0,
+    isBlockIndex
+  );
+  const [visitedIds, setVisitedIds] = usePersistedState<string[]>(
+    'foundations.visitedBlockIds',
+    [FOUNDATION_BLOCKS[0].id],
+    isStringArray
+  );
   const [jumpOpen, setJumpOpen] = useState(false);
   const [trafficSpike, setTrafficSpike] = useState(false);
-  const [activeLab, setActiveLab] = useState<'spike' | 'breaker' | 'reliability'>('spike');
+  const [activeLab, setActiveLab] = usePersistedState<'spike' | 'breaker' | 'reliability'>(
+    'foundations.activeLab',
+    'spike',
+    isLabId
+  );
 
   const activeBlock = FOUNDATION_BLOCKS[activeIndex] ?? FOUNDATION_BLOCKS[0];
   const ActiveIcon = BLOCK_ICONS[activeBlock.icon];

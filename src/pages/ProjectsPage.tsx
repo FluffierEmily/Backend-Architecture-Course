@@ -1,19 +1,39 @@
-import { useState } from 'react';
 import { ALL_PRACTICE_PROJECTS, ARCHITECTURE_MODULES } from '../data';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import type { ProjectArchitectureId } from '../types/course';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface ProjectsPageProps {
   completedMilestones: string[];
   onToggleMilestone: (milestoneId: string) => void;
 }
 
+const VALID_ARCH_FILTERS = new Set<string>([
+  'all',
+  'hybrid',
+  ...ARCHITECTURE_MODULES.map((m) => m.id),
+]);
+
+const isArchFilter = (v: unknown): v is 'all' | ProjectArchitectureId =>
+  typeof v === 'string' && VALID_ARCH_FILTERS.has(v);
+
+const isDifficultyFilter = (v: unknown): v is 'all' | 'starter' | 'stretch' =>
+  v === 'all' || v === 'starter' || v === 'stretch';
+
 export function ProjectsPage({
   completedMilestones,
   onToggleMilestone,
 }: ProjectsPageProps) {
-  const [archFilter, setArchFilter] = useState<'all' | ProjectArchitectureId>('all');
-  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'starter' | 'stretch'>('all');
+  const [archFilter, setArchFilter] = usePersistedState<'all' | ProjectArchitectureId>(
+    'projects.archFilter',
+    'all',
+    isArchFilter
+  );
+  const [difficultyFilter, setDifficultyFilter] = usePersistedState<'all' | 'starter' | 'stretch'>(
+    'projects.difficultyFilter',
+    'all',
+    isDifficultyFilter
+  );
 
   const filtered = ALL_PRACTICE_PROJECTS.filter((p) => {
     const matchArch = archFilter === 'all' || p.architectureId === archFilter;

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useRef } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
 import { FoundationsPage } from './pages/FoundationsPage';
@@ -10,10 +10,22 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { useCourseProgress } from './hooks/useCourseProgress';
 import { useTheme } from './hooks/useTheme';
 import { useReadingPrefs } from './hooks/useReadingPrefs';
+import { clearPersistedUiState, readUiState, writeUiState } from './hooks/usePersistedState';
 import { ARCHITECTURE_BY_ID } from './data';
 import type { ArchitectureId } from './types/course';
 
 const BASE_TITLE = 'Interactive Backend Architectures Course';
+const VALID_STATIC_PATHS = new Set(['/', '/foundations', '/compare', '/simulator', '/projects']);
+
+function isValidCoursePath(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  if (VALID_STATIC_PATHS.has(value)) return true;
+  if (value.startsWith('/modules/')) {
+    const slug = value.replace('/modules/', '') as ArchitectureId;
+    return Boolean(ARCHITECTURE_BY_ID[slug]);
+  }
+  return false;
+}
 
 function getTitleForPath(pathname: string): string {
   if (pathname === '/foundations') return `Foundations · ${BASE_TITLE}`;
@@ -30,10 +42,28 @@ function getTitleForPath(pathname: string): string {
 
 function RouteMetadata() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const checkedInitialRestoreRef = useRef(false);
+
   useEffect(() => {
+    if (!checkedInitialRestoreRef.current) {
+      checkedInitialRestoreRef.current = true;
+      if (pathname === '/') {
+        const savedPath = readUiState<string>('lastRoute', '/', isValidCoursePath);
+        if (savedPath !== '/') {
+          navigate(savedPath, { replace: true });
+          return;
+        }
+      }
+    }
+
+    if (isValidCoursePath(pathname)) {
+      writeUiState('lastRoute', pathname);
+    }
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     document.title = getTitleForPath(pathname);
-  }, [pathname]);
+  }, [pathname, navigate]);
+
   return null;
 }
 
@@ -53,6 +83,11 @@ export function AppRoutes() {
   const { theme, toggleTheme } = useTheme();
   const { prefs, toggleCalmMotion } = useReadingPrefs();
 
+  const handleResetProgress = useCallback(() => {
+    resetProgress();
+    clearPersistedUiState();
+  }, [resetProgress]);
+
   return (
     <Layout
       progress={progress}
@@ -61,7 +96,7 @@ export function AppRoutes() {
       readingPrefs={prefs}
       onToggleTheme={toggleTheme}
       onToggleCalmMotion={toggleCalmMotion}
-      onResetProgress={resetProgress}
+      onResetProgress={handleResetProgress}
     >
       <RouteMetadata />
       <Routes>

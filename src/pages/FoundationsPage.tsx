@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FoundationsPlayground } from '../components/FoundationsPlayground';
 import { BEGINNER_GLOSSARY } from '../data';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface FoundationsPageProps {
   isCompleted: boolean;
@@ -17,9 +17,21 @@ const FOUNDATION_STEPS = [
 
 type FoundationStepId = (typeof FOUNDATION_STEPS)[number]['id'];
 
+const isViewMode = (v: unknown): v is 'guided' | 'all' => v === 'guided' || v === 'all';
+const isFoundationStepIdx = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < FOUNDATION_STEPS.length;
+
 export function FoundationsPage({ isCompleted, onMarkComplete }: FoundationsPageProps) {
-  const [viewMode, setViewMode] = useState<'guided' | 'all'>('guided');
-  const [stepIdx, setStepIdx] = useState(0);
+  const [viewMode, setViewMode] = usePersistedState<'guided' | 'all'>(
+    'foundations.viewMode',
+    'guided',
+    isViewMode
+  );
+  const [stepIdx, setStepIdx] = usePersistedState<number>(
+    'foundations.stepIdx',
+    0,
+    isFoundationStepIdx
+  );
 
   const activeStep: FoundationStepId = FOUNDATION_STEPS[stepIdx].id;
   const isVisible = (id: FoundationStepId) => viewMode === 'all' || activeStep === id;

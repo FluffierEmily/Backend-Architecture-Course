@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ARCHITECTURE_BY_ID, ARCHITECTURE_MODULES, SIMULATOR_SCENARIOS } from '../data';
 import type { ArchitectureId, SimulatorOutcome } from '../types/course';
+import { readUiState, usePersistedState, writeUiState } from '../hooks/usePersistedState';
 
 interface DecisionSimulatorProps {
   completedChoices: Record<string, ArchitectureId>;
@@ -56,28 +57,60 @@ const SCORE_AXES: { key: keyof SimulatorOutcome['scores']; label: string }[] = [
   { key: 'faultIsolation', label: 'Fault Isolation' },
 ];
 
+const VALID_ARCH_IDS = new Set<string>(ARCHITECTURE_MODULES.map((m) => m.id));
+const isScenarioIdx = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < SIMULATOR_SCENARIOS.length;
+const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
+const isArchIdOrNull = (v: unknown): v is ArchitectureId | null =>
+  v === null || (typeof v === 'string' && VALID_ARCH_IDS.has(v));
+
 export function DecisionSimulator({
   completedChoices,
   onRecordChoice,
 }: DecisionSimulatorProps) {
-  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [scenarioIdx, setScenarioIdx] = usePersistedState<number>(
+    'simulator.scenarioIdx',
+    0,
+    isScenarioIdx
+  );
   const [jumpOpen, setJumpOpen] = useState(false);
-  const scenario = SIMULATOR_SCENARIOS[scenarioIdx];
+  const scenario = SIMULATOR_SCENARIOS[scenarioIdx] ?? SIMULATOR_SCENARIOS[0];
 
-  const [selectedArch, setSelectedArch] = useState<ArchitectureId | null>(
-    completedChoices[scenario.id] ?? null
+  const [selectedArch, setSelectedArchState] = useState<ArchitectureId | null>(
+    () =>
+      readUiState<ArchitectureId | null>(
+        `simulator.draft.${scenario.id}`,
+        completedChoices[scenario.id] ?? null,
+        isArchIdOrNull
+      ) ??
+      completedChoices[scenario.id] ??
+      null
   );
   const [simulatedArch, setSimulatedArch] = useState<ArchitectureId | null>(
     completedChoices[scenario.id] ?? null
   );
-  const [showCompareAll, setShowCompareAll] = useState(false);
+  const [showCompareAll, setShowCompareAll] = usePersistedState<boolean>(
+    'simulator.showCompareAll',
+    false,
+    isBoolean
+  );
+
+  const setSelectedArch = (arch: ArchitectureId | null) => {
+    setSelectedArchState(arch);
+    writeUiState(`simulator.draft.${scenario.id}`, arch);
+  };
 
   const handleSelectScenario = (index: number) => {
     const nextScenario = SIMULATOR_SCENARIOS[index];
     setScenarioIdx(index);
-    const saved = completedChoices[nextScenario.id] ?? null;
-    setSelectedArch(saved);
-    setSimulatedArch(saved);
+    const savedCompleted = completedChoices[nextScenario.id] ?? null;
+    const savedDraft = readUiState<ArchitectureId | null>(
+      `simulator.draft.${nextScenario.id}`,
+      savedCompleted,
+      isArchIdOrNull
+    );
+    setSelectedArchState(savedDraft ?? savedCompleted);
+    setSimulatedArch(savedCompleted);
     setShowCompareAll(false);
     setJumpOpen(false);
   };
