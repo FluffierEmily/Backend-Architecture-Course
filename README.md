@@ -1,27 +1,17 @@
 # Interactive Backend Architectures Course
 
-A beginner-friendly, browser-based interactive course for developers who want to understand, compare, and choose between four core backend architectures — with **zero local Docker/server setup** and **no blank-editor coding exams**.
+A browser-based interactive course for understanding, comparing, and choosing between four core backend architectures — no local Docker setup or blank-editor exams required.
 
 Live URL: https://backend-architecture-course.web.app/
 
 ## What’s Inside
 
-1. **Module 0 — Backend Foundations**
-   - **18 plain-English building blocks** covering HTTP & API idempotency, API Gateways, Databases & Scaling (SQL vs. NoSQL, replication lag, sharding), Concurrency & Locking, Queues & Brokers, Real-Time Push (Polling/SSE/WebSockets), Stateless Scaling, Caching, Rate Limiting & Backpressure, Observability & Graceful Shutdown, Auth/Authorization/Webhooks, Zero-Downtime Migrations, Safe Deployments & Feature Flags, Multi-Tenancy, High Availability/SLOs/DR, and Testing Strategies — plus a **28-term pocket glossary**.
-   - **3 Interactive Mini-Labs:** Traffic Spike (Sync vs. Queue), Circuit Breaker State Machine, and Compounding Availability Math & Outbox Crash Simulator.
-2. **4 Core Architecture Modules** *(each anchored in a distinct real-world company scenario)*
-   - **Modular Monolith** (*PulseBoard* — B2B Team Project Management SaaS)
-   - **Microservices** (*StreamFlix* — Global Video Streaming Platform)
-   - **Serverless** (*SnapResize* — Spiky On-Demand Media & PDF Pipeline)
-   - **Event-Driven Architecture (EDA)** (*SwiftRide* — Real-Time Ride-Hailing Dispatch)
-3. **Interactive "Problematic vs. Refactored" Code Breakdowns (TypeScript / Node.js)**
-   - Side-by-side syntax-highlighted snippets with clickable highlight regions, active-recall **Quiz Me First** mode, and paired plain-English explainers showing *why beginner mistakes break* and *how the refactor fixes them*.
-4. **Interactive Architecture Flow Diagrams**
-   - Click any component node to inspect its role, and toggle **Normal Flow** vs. **Simulate Failure / Spike**.
-5. **Side-by-Side Comparison Matrix, Sizing/ADR Kit & Decision Simulator**
-   - Compare all 4 architectures by constraint, study Hybrids & the Strangler Fig (including safe database splitting), estimate QPS/egress with the Back-of-the-Envelope Calculator, copy a 1-page ADR template, and simulate **13 realistic company briefs** (including brownfield evolutions, multi-tenant SaaS, real-time WebSockets, and AI/LLM ingestion pipelines).
-6. **Self-Paced Practice Projects Gallery (9 Take-Home Blueprints)**
-   - 1 Starter + 1 Stretch project per architecture plus a **Hybrid / Strangler Fig Extraction Capstone**, each with suggested TypeScript stacks, folder layouts, checkable milestones including *"Break it on purpose"* drills (saved to `localStorage`), architectural rules, and a **Copy Brief (.md)** export.
+- **Backend Foundations (Module 0):** 18 core concepts (APIs, databases, caching, queues, reliability, auth, deployments, and more), a 28-term glossary, and 3 interactive mini-labs.
+- **4 Architecture Modules:** Real-world scenarios covering **Modular Monolith** (*PulseBoard*), **Microservices** (*StreamFlix*), **Serverless** (*SnapResize*), and **Event-Driven Architecture** (*SwiftRide*).
+- **Code Breakdowns:** Side-by-side TypeScript/Node.js "Problematic vs. Refactored" comparisons with clickable highlights and a **Quiz Me First** mode.
+- **Interactive Diagrams:** Clickable architecture diagrams with **Normal Flow** and **Simulate Failure / Spike** views.
+- **Compare & Decision Tools:** Comparison matrix, Strangler Fig migration guide, QPS/egress calculator, 1-page ADR template, and a **13-scenario Decision Simulator**.
+- **Practice Projects:** 9 self-paced TypeScript blueprints (Starter + Stretch per architecture, plus a Strangler Fig capstone) with saved milestones and Markdown export.
 
 ## Getting Started
 
