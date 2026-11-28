@@ -1,4 +1,5 @@
-import { Fragment, memo, useCallback, useId, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ABBREVIATION_BY_TOKEN,
   ABBREVIATION_REGEX,
@@ -12,59 +13,108 @@ interface AbbreviationTokenProps {
   interactive: boolean;
 }
 
+interface TooltipCoords {
+  left: number;
+  top?: number;
+  bottom?: number;
+}
+
+const TOOLTIP_WIDTH = 256;
+const VIEWPORT_PADDING = 12;
+
 const AbbreviationToken = memo(function AbbreviationToken({
   matchedText,
   entry,
   interactive,
 }: AbbreviationTokenProps) {
   const { openTerm } = useTermDrawer();
-  const [hovered, setHovered] = useState(false);
-  const [placeBelow, setPlaceBelow] = useState(false);
-  const [alignEdge, setAlignEdge] = useState<'center' | 'left' | 'right'>('center');
+  const [coords, setCoords] = useState<TooltipCoords | null>(null);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const tooltipId = useId();
 
   const canOpenDrawer = interactive && Boolean(entry.drawer);
+  const hovered = coords !== null;
 
   const showTooltip = useCallback(() => {
     const el = triggerRef.current;
-    if (el && typeof el.getBoundingClientRect === 'function') {
-      const rect = el.getBoundingClientRect();
-      setPlaceBelow(rect.top < 140);
-      if (rect.left < 150) {
-        setAlignEdge('left');
-      } else if (typeof window !== 'undefined' && window.innerWidth - rect.right < 150) {
-        setAlignEdge('right');
-      } else {
-        setAlignEdge('center');
-      }
+    if (!el || typeof el.getBoundingClientRect !== 'function') {
+      setCoords({ left: VIEWPORT_PADDING, top: VIEWPORT_PADDING });
+      return;
     }
-    setHovered(true);
+
+    const rect = el.getBoundingClientRect();
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+
+    const centeredLeft = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
+    const clampedLeft = Math.max(
+      VIEWPORT_PADDING,
+      Math.min(centeredLeft, vw - TOOLTIP_WIDTH - VIEWPORT_PADDING)
+    );
+
+    if (rect.top < 150) {
+      setCoords({ left: clampedLeft, top: rect.bottom + 8 });
+    } else {
+      setCoords({ left: clampedLeft, bottom: vh - rect.top + 8 });
+    }
   }, []);
 
   const hideTooltip = useCallback(() => {
-    setHovered(false);
+    setCoords(null);
   }, []);
+
+  useEffect(() => {
+    if (!hovered) return;
+    const dismiss = () => setCoords(null);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [hovered]);
 
   const handleOpen = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
       if (!canOpenDrawer) return;
       e.preventDefault();
       e.stopPropagation();
-      setHovered(false);
+      setCoords(null);
       openTerm(entry.id);
     },
     [canOpenDrawer, entry.id, openTerm]
   );
 
-  const positionClass =
-    alignEdge === 'left'
-      ? 'left-0'
-      : alignEdge === 'right'
-      ? 'right-0'
-      : 'left-1/2 -translate-x-1/2';
-
-  const verticalClass = placeBelow ? 'top-full mt-2' : 'bottom-full mb-2';
+  const tooltipNode =
+    hovered && coords && typeof document !== 'undefined'
+      ? createPortal(
+          <span
+            id={tooltipId}
+            role="tooltip"
+            style={{
+              position: 'fixed',
+              left: `${coords.left}px`,
+              top: coords.top !== undefined ? `${coords.top}px` : undefined,
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+              width: `${TOOLTIP_WIDTH}px`,
+            }}
+            className="pointer-events-none z-[100] rounded-xl border border-slate-700/90 bg-[#0f172a] p-3 text-left text-xs font-normal normal-case tracking-normal text-slate-100 shadow-2xl"
+          >
+            <span className="block font-bold text-white">
+              <span className="font-mono text-indigo-300">{entry.term}</span>
+              <span className="mx-1.5 text-slate-500">·</span>
+              <span>{entry.fullName}</span>
+            </span>
+            <span className="mt-1 block leading-5 text-slate-300">{entry.shortTooltip}</span>
+            {canOpenDrawer && (
+              <span className="mt-1.5 block text-[11px] font-semibold text-indigo-300">
+                Click for usage &amp; example code →
+              </span>
+            )}
+          </span>,
+          document.body
+        )
+      : null;
 
   return (
     <span
@@ -99,26 +149,7 @@ const AbbreviationToken = memo(function AbbreviationToken({
       >
         {matchedText}
       </span>
-
-      {hovered && (
-        <span
-          id={tooltipId}
-          role="tooltip"
-          className={`pointer-events-none absolute z-50 w-64 rounded-xl border border-slate-700/90 bg-[#0f172a] p-3 text-left text-xs font-normal normal-case tracking-normal text-slate-100 shadow-xl ${verticalClass} ${positionClass}`}
-        >
-          <span className="block font-bold text-white">
-            <span className="font-mono text-indigo-300">{entry.term}</span>
-            <span className="mx-1.5 text-slate-500">·</span>
-            <span>{entry.fullName}</span>
-          </span>
-          <span className="mt-1 block leading-5 text-slate-300">{entry.shortTooltip}</span>
-          {canOpenDrawer && (
-            <span className="mt-1.5 block text-[11px] font-semibold text-indigo-300">
-              Click for usage &amp; example code →
-            </span>
-          )}
-        </span>
-      )}
+      {tooltipNode}
     </span>
   );
 });

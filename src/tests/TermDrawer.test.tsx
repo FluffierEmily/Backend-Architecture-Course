@@ -20,11 +20,14 @@ describe('Abbreviation tooltips and right-side TermDrawer', () => {
   it('shows a tooltip on hover and opens the right-side drawer with usage and code on click', () => {
     renderWithDrawer('Use Postgres RLS and JWTs to keep B2B SaaS APIs safe.');
 
-    // Hovering RLS displays its tooltip
+    // Hovering RLS displays its tooltip portaled to document.body above all other layers
     const rlsTrigger = screen.getByRole('button', { name: 'RLS' });
     fireEvent.mouseEnter(rlsTrigger);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/Row-Level Security/i);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/Click for usage & example code/i);
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip).toHaveTextContent(/Row-Level Security/i);
+    expect(tooltip).toHaveTextContent(/Click for usage & example code/i);
+    expect(tooltip.parentElement).toBe(document.body);
+    expect(tooltip.className).toContain('z-[100]');
 
     // Clicking RLS opens the right-side drawer with explanation, usage, and example code
     fireEvent.click(rlsTrigger);
