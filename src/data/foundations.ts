@@ -13,6 +13,59 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Doing slow work (like generating a PDF or resizing a video) synchronously inside an HTTP request causes timeouts — and auto-retrying a `POST` request without an `Idempotency-Key` creates duplicate orders.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+    howToImplement: [
+      {
+        id: 'http-server-idempotency',
+        label: 'Server-Side Idempotency-Key',
+        summary:
+          'Store each client-generated Idempotency-Key in your database so retried POST requests replay the original result instead of executing twice.',
+        steps: [
+          'Create an `idempotency_keys` table with a `UNIQUE (user_id, key)` constraint plus `status` (`IN_PROGRESS` | `DONE`) and `response_json` columns.',
+          'At request start, insert the key with `ON CONFLICT DO NOTHING`; if a row already exists and is `DONE`, return the saved JSON immediately.',
+          'If an identical key is still `IN_PROGRESS`, return `409 Conflict` (telling the client to retry shortly); once finished, save the response and expire old keys after 24 hours.',
+        ],
+        code: {
+          filename: 'src/middleware/idempotency.ts',
+          snippet: `// 1. Atomically claim the key (UNIQUE on user_id + idem_key)
+const claimed = await db.queryOne(
+  \`INSERT INTO idempotency_keys (user_id, idem_key, status)
+   VALUES ($1, $2, 'IN_PROGRESS')
+   ON CONFLICT (user_id, idem_key) DO NOTHING RETURNING idem_key\`,
+  [userId, idemKey]
+);
+
+if (!claimed) {
+  const existing = await db.getIdempotencyRecord(userId, idemKey);
+  if (existing.status === 'DONE') return res.status(existing.http_status).json(existing.body);
+  return res.status(409).json({ error: 'Request already in progress, retry shortly' });
+}
+
+// 2. Run mutation once, then persist response_body + status = 'DONE'`,
+        },
+        watchOut:
+          'Also hash the request body and reject reuse if the same Idempotency-Key is sent with a different payload (prevents accidental cross-order replays).',
+      },
+      {
+        id: 'http-cursor-pagination',
+        label: 'Cursor Pagination',
+        summary:
+          'Replace slow `OFFSET` queries with a composite `(created_at, id)` cursor so page 500 is just as fast as page 1.',
+        steps: [
+          'Always include a unique tie-breaker column (`id`) alongside `created_at` so two rows created in the exact same millisecond are never skipped or duplicated.',
+          'Fetch `limit + 1` rows; if you get an extra row, encode the last returned item as `nextCursor` (Base64 JSON).',
+          'Enforce a strict server-side cap (e.g., `Math.min(reqLimit, 100)`) on every list endpoint.',
+        ],
+        code: {
+          filename: 'src/repos/listTasks.sql',
+          snippet: `SELECT id, title, created_at
+FROM tasks
+WHERE org_id = $1
+  AND (created_at, id) < ($2, $3) -- composite cursor from previous page
+ORDER BY created_at DESC, id DESC
+LIMIT 51; -- request 50 + 1 to check if another page exists`,
+        },
+      },
+    ],
   },
   {
     id: 'api-gateway',
@@ -91,6 +144,75 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Watch for Cache Stampedes (a popular key expires and 500 requests hit the DB at once — add small random TTL jitter), stale data after writes, and NEVER cache private user data in a shared public CDN key!',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+    howToImplement: [
+      {
+        id: 'cache-invalidation',
+        label: 'Avoid Stale Data on Writes',
+        summary:
+          'Keep Redis accurate after updates by deleting the affected cache key right after the database commit succeeds.',
+        steps: [
+          'Write to your primary database first — never update Redis before the SQL transaction commits.',
+          'Immediately `DEL` (invalidate) the affected key after commit so the next read repopulates fresh data cleanly (deleting avoids race conditions better than overwriting Redis).',
+          'Always keep a reasonable fallback TTL (e.g., 5 minutes) so even if a delete fails during a network blip, stale data self-heals automatically.',
+        ],
+        code: {
+          filename: 'src/modules/catalog/updatePrice.ts',
+          snippet: `export async function updateProductPrice(productId: string, priceCents: number) {
+  await db.query('UPDATE products SET price_cents = $1 WHERE id = $2', [priceCents, productId]);
+  // Delete instead of SET so concurrent writers cannot overwrite newer values
+  await redis.del(\`catalog:product:\${productId}\`);
+}`,
+        },
+      },
+      {
+        id: 'cache-cdn-headers',
+        label: 'Safe CDN Headers',
+        summary:
+          'Explicitly label authenticated responses as `private, no-store` so a CDN edge node never serves User A’s invoice to User B.',
+        steps: [
+          'Set `Cache-Control: private, no-store` by default on any route that reads `Authorization` headers or session cookies.',
+          'Only enable `public, s-maxage=...` on truly anonymous/shared endpoints (e.g., public catalog pages, blog posts, static assets).',
+          'Add `stale-while-revalidate=30` on public GETs so the CDN serves fast cached content while refreshing quietly in the background.',
+        ],
+        code: {
+          filename: 'src/middleware/cacheHeaders.ts',
+          snippet: `// Authenticated user/tenant routes — NEVER share on a public CDN
+res.setHeader('Cache-Control', 'private, no-store');
+
+// Public catalog GET route — edge caches 60s, refreshes quietly in background
+res.setHeader('Cache-Control', 'public, max-age=15, s-maxage=60, stale-while-revalidate=30');`,
+        },
+      },
+      {
+        id: 'cache-stampede-singleflight',
+        label: 'Hot-Key Stampede Guard',
+        summary:
+          'TTL jitter spreads out *many* keys expiring together, while request coalescing (singleflight) stops 500 requests from rebuilding the *same* hot key at once.',
+        steps: [
+          'For an in-process Node server, store the in-flight DB promise in a `Map<key, Promise>` so 50 concurrent misses await the exact same single SQL query.',
+          'Across multiple server replicas, acquire a short Redis mutex (`SET lock:key 1 NX PX 3000`) or use `stale-while-revalidate` so only 1 replica queries Postgres.',
+          'Pair with random TTL jitter (`300 + Math.random() * 30`) so bulk-loaded keys expire smoothly over time.',
+        ],
+        code: {
+          filename: 'src/shared/singleflightCache.ts',
+          snippet: `const inflight = new Map<string, Promise<unknown>>();
+
+export async function getOrLoad<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const cached = await redis.get(key);
+  if (cached) return JSON.parse(cached);
+  if (!inflight.has(key)) {
+    const p = loader().then(async (val) => {
+      const ttl = 300 + Math.floor(Math.random() * 30);
+      await redis.set(key, JSON.stringify(val), 'EX', ttl);
+      return val;
+    }).finally(() => inflight.delete(key));
+    inflight.set(key, p);
+  }
+  return inflight.get(key) as Promise<T>;
+}`,
+        },
+      },
+    ],
   },
   {
     id: 'rate-limiting-backpressure',
@@ -104,6 +226,52 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'A queue absorbs temporary spikes, NOT permanent overload! If producers push 500 jobs/sec forever while workers only process 100/sec, the queue grows unbounded until delays hit hours or brokers crash.',
     relevantArchitectures: ['serverless', 'microservices', 'event-driven', 'modular-monolith'],
+    howToImplement: [
+      {
+        id: 'rl-backpressure-shedding',
+        label: 'Bounded Queue & Load Shedding',
+        summary:
+          'Cap queue depth before enqueuing so sustained overload degrades gracefully with HTTP 503 instead of crashing your broker.',
+        steps: [
+          'For sustained overload (inflow > outflow), autoscale worker replicas first or batch work more efficiently.',
+          'Set a hard max queue depth (e.g., 5,000 waiting jobs) and reject low-priority requests fast with `503 Service Unavailable` + `Retry-After`.',
+          'Alert when queue age/depth climbs for >5 minutes so you spot permanent capacity shortages early.',
+        ],
+        code: {
+          filename: 'src/routes/enqueueExport.ts',
+          snippet: `const waiting = await exportQueue.getWaitingCount();
+if (waiting >= 5_000) {
+  res.setHeader('Retry-After', '30');
+  return res.status(503).json({ error: 'Export queue busy — please retry in 30s' });
+}
+await exportQueue.add('csv-export', { orgId, userId });
+return res.status(202).json({ status: 'queued' });`,
+        },
+      },
+      {
+        id: 'rl-outbound-429',
+        label: 'Outbound 429 Throttling',
+        summary:
+          'When workers call rate-limited external APIs (Stripe, HubSpot, OpenAI), throttle concurrency and respect `Retry-After` so valid jobs do not burn through retries.',
+        steps: [
+          'Configure a strict concurrency / rate limiter on the worker queue matching the vendor’s RPM quota (e.g., BullMQ `limiter: { max: 50, duration: 1000 }` or SQS reserved concurrency).',
+          'Check for HTTP `429 Too Many Requests` explicitly and read the `Retry-After` header (in seconds) instead of throwing a normal fatal error.',
+          'Re-schedule the job with the requested delay + small random jitter without counting it as a poison-pill failure.',
+        ],
+        code: {
+          filename: 'src/workers/callExternalApi.ts',
+          snippet: `const resp = await fetch(partnerUrl, { method: 'POST', body: JSON.stringify(job.data) });
+
+if (resp.status === 429) {
+  const retrySec = Number(resp.headers.get('retry-after') ?? 5);
+  const jitterMs = Math.floor(Math.random() * 1000);
+  // Delay job cleanly instead of burning retries into the DLQ
+  await job.moveToDelayed(Date.now() + retrySec * 1000 + jitterMs);
+  return;
+}`,
+        },
+      },
+    ],
   },
   {
     id: 'observability',
@@ -117,6 +285,65 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Never rely on average latency! An "80ms average" can hide a miserable p99 of 4.2 seconds for your slowest 1% of users. And killing containers abruptly on deploy drops active payments and half-finished queue jobs.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+    howToImplement: [
+      {
+        id: 'obs-health-shutdown',
+        label: 'Health Checks & SIGTERM Drain',
+        summary:
+          'Expose separate `/healthz` and `/readyz` routes and drain in-flight HTTP requests & DB pools cleanly on `SIGTERM`.',
+        steps: [
+          '`/healthz` (Liveness) checks only that the event loop responds — never query Postgres inside Liveness, or a brief DB blip will restart every container in a death loop.',
+          '`/readyz` (Readiness) returns `503` while shutting down or if the DB ping fails, telling the load balancer to stop sending new traffic immediately.',
+          'On `SIGTERM`, mark `isShuttingDown = true`, wait briefly for the load balancer to drain, call `server.close()`, close worker & DB pools, and exit `0`.',
+        ],
+        code: {
+          filename: 'src/serverLifecycle.ts',
+          snippet: `let isShuttingDown = false;
+
+app.get('/healthz', (_req, res) => res.status(200).json({ ok: true }));
+app.get('/readyz', async (_req, res) => {
+  if (isShuttingDown) return res.status(503).json({ ready: false });
+  await db.query('SELECT 1'); // short 500ms timeout
+  return res.status(200).json({ ready: true });
+});
+
+process.on('SIGTERM', async () => {
+  isShuttingDown = true;
+  await new Promise((r) => server.close(r)); // finish in-flight HTTP calls
+  await worker.close();                      // finish active queue jobs
+  await db.end();
+  process.exit(0);
+});`,
+        },
+      },
+      {
+        id: 'obs-correlation-id',
+        label: 'Propagate x-request-id',
+        summary:
+          'Generate or forward one `x-request-id` across every log line and downstream HTTP/event call so you can trace a request end-to-end.',
+        steps: [
+          'In entry middleware, read `req.headers["x-request-id"]` or create a fresh `crypto.randomUUID()`.',
+          'Store it in `AsyncLocalStorage` (or attach to `req.log`) so every structured JSON log line automatically includes `requestId` and `durationMs`.',
+          'Pass `headers: { "x-request-id": requestId }` on every outbound `fetch` and include `correlationId` in every emitted event envelope.',
+        ],
+        code: {
+          filename: 'src/middleware/requestId.ts',
+          snippet: `import { randomUUID } from 'node:crypto';
+
+export function requestIdMiddleware(req, res, next) {
+  const requestId = req.headers['x-request-id'] || randomUUID();
+  const start = performance.now();
+  req.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+
+  res.on('finish', () => {
+    console.log(JSON.stringify({ requestId, path: req.path, status: res.statusCode, ms: Math.round(performance.now() - start) }));
+  });
+  next();
+}`,
+        },
+      },
+    ],
   },
   {
     id: 'security-auth',
@@ -130,6 +357,60 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Checking only "is the user logged in?" without verifying resource ownership causes IDOR vulnerabilities (User A reading User B’s invoice by changing `/invoices/42` to `/invoices/43`). On public webhooks, skipping HMAC verification lets anyone forge payment events.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+    howToImplement: [
+      {
+        id: 'sec-webhook-hmac',
+        label: 'Webhook HMAC & Replay Check',
+        summary:
+          'Verify incoming Stripe/GitHub webhooks using the exact raw request bytes, a timing-safe comparison, and a 5-minute timestamp window.',
+        steps: [
+          'Capture the **raw request buffer** before any JSON body parser runs (re-stringifying parsed JSON can change whitespace/key order and break signatures).',
+          'Reject requests whose signed timestamp header is older than 5 minutes to block captured replay attacks.',
+          'Compute `HMAC-SHA256` with your webhook secret and compare using `crypto.timingSafeEqual` (never `===`).',
+        ],
+        code: {
+          filename: 'src/shared/verifyWebhook.ts',
+          snippet: `import { createHmac, timingSafeEqual } from 'node:crypto';
+
+export function verifyWebhook(rawBody: Buffer, sigHex: string, timestampSec: number, secret: string) {
+  // 1. Block replay attacks older than 5 minutes
+  if (Math.abs(Date.now() / 1000 - timestampSec) > 300) return false;
+
+  // 2. Hash exact raw bytes + timestamp with your secret
+  const expected = createHmac('sha256', secret)
+    .update(\`\${timestampSec}.\`)
+    .update(rawBody)
+    .digest();
+  const actual = Buffer.from(sigHex, 'hex');
+
+  // 3. Constant-time comparison prevents timing leaks
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}`,
+        },
+        watchOut:
+          'Always verify the signature BEFORE parsing JSON or enqueueing the job — and still deduplicate by webhook event ID because providers retry valid deliveries.',
+      },
+      {
+        id: 'sec-jwt-revocation',
+        label: 'Instant JWT Revocation',
+        summary:
+          'Stateless JWTs cannot be "deleted" until they expire — combine short access TTLs with a lightweight revocation check for instant logout/offboarding.',
+        steps: [
+          'Issue short-lived access JWTs (5–15 minutes) paired with revocable refresh tokens stored in Postgres or Redis.',
+          'When an admin revokes a terminated employee or a user clicks "Log out all devices," delete their refresh tokens AND set a tiny Redis key `revoked:user:{id}` (with TTL = access token lifetime).',
+          'Check that fast Redis key (or a `tokenVersion` integer) at the API Gateway or on sensitive endpoints so access stops immediately.',
+        ],
+        code: {
+          filename: 'src/auth/verifyAccess.ts',
+          snippet: `const payload = verifyJwt(token, PUBLIC_KEY); // exp <= 10 min
+const revokedBefore = await redis.get(\`revoked:user:\${payload.sub}\`);
+
+if (revokedBefore && payload.iat < Number(revokedBefore)) {
+  return res.status(401).json({ error: 'Session revoked — please sign in again' });
+}`,
+        },
+      },
+    ],
   },
   {
     id: 'zero-downtime-migrations',
@@ -169,6 +450,50 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Reading a balance in JavaScript (`if (balance >= 50)`), doing work, and then writing `balance - 50` is a classic read-modify-write race condition! And avoid Redis distributed locks unless you truly need cross-system coordination — clock drift and GC pauses can let two workers hold the "lock" simultaneously.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+    howToImplement: [
+      {
+        id: 'conc-optimistic-locking',
+        label: 'Optimistic Locking Retry / 409',
+        summary:
+          'For multi-field edits, guard your SQL `UPDATE` with `WHERE version = $expected` and handle 0 updated rows explicitly.',
+        steps: [
+          'Add an integer `version` column (default `1`) to mutable records.',
+          'Include `AND version = $expectedVersion` in your `UPDATE` and increment `version = version + 1`.',
+          'If `rowCount === 0`, another writer beat you — either return `409 Conflict` so the UI refreshes, or automatically re-read & retry up to 3 times.',
+        ],
+        code: {
+          filename: 'src/repos/updateInvoice.ts',
+          snippet: `const updated = await db.queryOne(
+  \`UPDATE invoices
+   SET status = $1, total_cents = $2, version = version + 1
+   WHERE id = $3 AND org_id = $4 AND version = $5
+   RETURNING id, version\`,
+  [nextStatus, totalCents, invoiceId, orgId, expectedVersion]
+);
+if (!updated) {
+  throw new HttpError(409, 'Record was modified by another request — refresh and retry');
+}`,
+        },
+      },
+      {
+        id: 'conc-fencing-tokens',
+        label: 'Fencing Tokens (Distributed Locks)',
+        summary:
+          'When you truly need a cross-system distributed lock, pair it with a monotonically increasing fencing token checked by storage.',
+        steps: [
+          'Prefer a single database row lock or unique constraint first — most apps never need Redis locks.',
+          'If a lock service (e.g., etcd / Postgres lease table) grants Worker A a lock, it also returns an ever-increasing number (`fencingToken = 33`).',
+          'Pass `fencingToken` on every downstream write (`WHERE last_token < $token`); if Worker A pauses for GC and Worker B acquires token `34`, Worker A’s stale write `33` is safely rejected!',
+        ],
+        code: {
+          filename: 'src/workers/fencedWrite.sql',
+          snippet: `-- Downstream storage rejects delayed writes from an expired lock holder
+UPDATE shared_resources
+SET payload = $1, last_fencing_token = $2
+WHERE id = $3 AND last_fencing_token < $2;`,
+        },
+      },
+    ],
   },
   {
     id: 'realtime-push',
@@ -182,6 +507,28 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Persistent WebSocket connections are stateful! When you scale to 4 backend servers, User A on Server 1 cannot message User B on Server 2 unless servers broadcast via Redis Pub/Sub or a broker — and standard stateless Serverless functions cannot hold long-lived WebSockets directly without a managed gateway.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+    howToImplement: [
+      {
+        id: 'rt-ws-drain-jitter',
+        label: 'Graceful WS Drain & Jittered Reconnect',
+        summary:
+          'Prevent massive reconnect storms during deploys by closing sockets in staggered batches on the server and reconnecting with jittered backoff on the client.',
+        steps: [
+          'Server-side on `SIGTERM`: stop accepting new WebSockets, then close existing sockets in small staggered batches over 15–30 seconds with close code `1012` (Service Restart).',
+          'Client-side on `onclose`: never reconnect immediately in a tight loop — compute `Math.min(30_000, 500 * 2 ** attempt)` plus random jitter.',
+          'Reset `attempt = 0` once the connection stays healthy for a few seconds, and fetch missed messages since `lastEventId`.',
+        ],
+        code: {
+          filename: 'src/client/reconnectSocket.ts',
+          snippet: `function scheduleReconnect(attempt: number) {
+  const baseMs = Math.min(30_000, 500 * 2 ** attempt);
+  // Full jitter spreads 250,000 clients smoothly across the backoff window
+  const delayMs = Math.floor(Math.random() * baseMs);
+  setTimeout(() => connectWebSocket(attempt + 1), delayMs);
+}`,
+        },
+      },
+    ],
   },
   {
     id: 'db-choice-scaling',
@@ -195,6 +542,38 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'Read Replicas lag behind the primary by milliseconds to seconds! If a user saves their profile and immediately reloads from a replica, they may see stale data ("read-your-own-writes" bug) unless post-write reads route to the primary. Under CAP trade-offs during a network split, distributed stores must choose between strict consistency and accepting writes.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless', 'event-driven'],
+    howToImplement: [
+      {
+        id: 'db-read-your-writes',
+        label: 'Read-Your-Own-Writes Routing',
+        summary:
+          'Avoid stale post-write reads without sending 100% of traffic to your primary database.',
+        steps: [
+          'Easiest win: return the updated record directly in the `POST`/`PATCH` response so the frontend updates state without an immediate `GET`.',
+          'Route user-critical flows (checkout, settings, RBAC permissions) strictly to the primary, and send only analytics, search, and public feeds to Read Replicas.',
+          'If a user redirects right after a write, set a tiny 5-second `read_primary_until` cookie/timestamp so only that user’s next few `GET` requests hit the primary.',
+        ],
+        code: {
+          filename: 'src/shared/dbRouter.ts',
+          snippet: `export function pickReadDb(req: { cookies?: { read_primary_until?: string } }) {
+  const stickUntil = Number(req.cookies?.read_primary_until ?? 0);
+  // Sticky primary for 5s after this user wrote; everyone else uses replica
+  return Date.now() < stickUntil ? primaryDb : replicaDb;
+}`,
+        },
+      },
+      {
+        id: 'db-cap-guide',
+        label: 'Practical CAP Trade-Off Guide',
+        summary:
+          'When a network partition splits two database nodes, pick CP (reject stale writes) or AP (stay writable, reconcile later) per business feature.',
+        steps: [
+          'Choose **CP (Consistency over Availability)** for money, seat/inventory counts, and security permissions — better to show a temporary retry error than double-spend or grant revoked access.',
+          'Choose **AP (Availability over Consistency)** for social feeds, view counters, shopping carts, and read caches — brief staleness is harmless compared to downtime.',
+          'Most beginner apps start with a single primary Postgres (strong consistency) + Multi-AZ failover, avoiding multi-primary split-brain conflicts altogether.',
+        ],
+      },
+    ],
   },
   {
     id: 'safe-deployments',
@@ -221,6 +600,47 @@ export const FOUNDATION_BLOCKS: FoundationBlock[] = [
     beginnerWatchOut:
       'One enterprise customer running a massive bulk import can starve every small customer on shared queues or DB pools ("noisy neighbor" problem). Apply per-tenant rate limits and move heavy exports to isolated workers.',
     relevantArchitectures: ['modular-monolith', 'microservices', 'serverless'],
+    howToImplement: [
+      {
+        id: 'mt-postgres-rls-local',
+        label: 'Postgres RLS + Pooler Safety (SET LOCAL)',
+        summary:
+          'Enable Row-Level Security on tenant tables and always set tenant context with `SET LOCAL` inside a transaction so connection poolers never leak Tenant A into Tenant B.',
+        steps: [
+          'Enable RLS and define a policy requiring `tenant_id = current_setting(\'app.tenant_id\', true)::uuid` on every multi-tenant table (use a non-superuser app DB role so RLS is enforced!).',
+          'Wrap every tenant-scoped query in a transaction and run `SET LOCAL` (transaction-scoped), NEVER plain `SET` (connection-scoped).',
+          'Why `SET LOCAL` matters: transaction-mode poolers (PgBouncer / RDS Proxy) hand the same physical connection to another tenant right after commit — `SET LOCAL` resets automatically at commit/rollback.',
+        ],
+        code: {
+          filename: 'src/shared/withTenant.ts',
+          snippet: `-- 1. One-time SQL migration:
+-- ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY tenant_isolation ON projects
+--   USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+// 2. Per-request wrapper (safe with PgBouncer & Serverless!)
+export async function withTenant<T>(tenantId: string, fn: (tx: DbClient) => Promise<T>) {
+  return db.transaction(async (tx) => {
+    await tx.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]); // true = SET LOCAL
+    return fn(tx);
+  });
+}`,
+        },
+        watchOut:
+          'PostgreSQL superusers and table owners bypass RLS by default unless you run `ALTER TABLE ... FORCE ROW LEVEL SECURITY` and connect with a restricted application DB role.',
+      },
+      {
+        id: 'mt-queue-fairness',
+        label: 'Multi-Tenant Queue Fairness',
+        summary:
+          'Prevent one enterprise tenant uploading 100,000 jobs from stalling every smaller customer waiting in the same FIFO queue.',
+        steps: [
+          'Split queues by workload class: fast interactive jobs (`emails`, `webhooks`) never share a queue with heavy batch jobs (`bulk-imports`, `csv-exports`).',
+          'Use fair/group-based scheduling (e.g., BullMQ Pro Groups, SQS Fair Queues, or capping max active jobs per `tenantId` in Redis) so workers round-robin across tenants.',
+          'Set per-tenant rate limits at intake so noisy tenants queue politely at their own tier limit.',
+        ],
+      },
+    ],
   },
   {
     id: 'availability-dr',
@@ -377,5 +797,35 @@ export const BEGINNER_GLOSSARY = [
     term: 'RPO & RTO',
     meaning:
       'Disaster recovery targets: RPO (Recovery Point Objective) is the maximum acceptable data loss (e.g., 5 minutes); RTO (Recovery Time Objective) is the maximum acceptable downtime to restore.',
+  },
+  {
+    term: 'CAP Theorem',
+    meaning:
+      'During a network partition (split) between distributed database nodes, a store must choose between Consistency (rejecting writes that could be stale) or Availability (accepting writes and reconciling later).',
+  },
+  {
+    term: 'Postgres RLS (Row-Level Security)',
+    meaning:
+      'A PostgreSQL policy that automatically filters every SQL query by `tenant_id` inside the database engine — pair with transaction-scoped `SET LOCAL` when using connection poolers.',
+  },
+  {
+    term: 'Crypto-Shredding',
+    meaning:
+      'Encrypting a user’s PII fields inside immutable event logs with a unique per-user key stored in a mutable key table; deleting that key on GDPR erasure makes historical log entries permanently unreadable.',
+  },
+  {
+    term: 'Fencing Token',
+    meaning:
+      'A monotonically increasing number issued with a distributed lock so downstream databases reject delayed writes from an expired or GC-paused lock holder.',
+  },
+  {
+    term: 'Shadow Reads',
+    meaning:
+      'Reading from both an old and new database during a migration, logging any mismatches in the background while still returning the old database’s response to users until 100% parity is proven.',
+  },
+  {
+    term: 'DataLoader (Batching)',
+    meaning:
+      'A per-request batching utility (popular in GraphQL BFFs) that collects individual `getUser(id)` resolver lookups from one tick and sends a single batched `POST /users/batch` query to eliminate N+1 storms.',
   },
 ];

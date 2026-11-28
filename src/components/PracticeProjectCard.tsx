@@ -4,6 +4,7 @@ import {
   CheckSquare,
   Copy,
   FolderTree,
+  Lightbulb,
   ShieldAlert,
   Square,
 } from 'lucide-react';
@@ -11,6 +12,7 @@ import type { PracticeProject } from '../types/course';
 import { ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureIcon, ARCHITECTURE_VISUALS } from './ArchitectureIcon';
+import { ImplementationDrawer } from './ImplementationDrawer';
 
 interface PracticeProjectCardProps {
   project: PracticeProject;
@@ -54,12 +56,25 @@ function buildMarkdownBrief(project: PracticeProject): string {
     '',
     '## Key Architectural Rules ("Don\'t Cheat")',
     ...project.architectureRules.map((r) => `- ${r}`),
+    ...(project.starterHints && project.starterHints.length > 0
+      ? [
+          '',
+          '## Implementation Hints',
+          ...project.starterHints.flatMap((h) => [
+            `### ${h.label}`,
+            h.summary,
+            ...h.steps.map((s, idx) => `${idx + 1}. ${s}`),
+            ...(h.code ? ['```ts', h.code.snippet.trimEnd(), '```'] : []),
+            '',
+          ]),
+        ]
+      : []),
     '',
   ].join('\n');
 }
 
-const isDrawerMode = (v: unknown): v is 'none' | 'folder' | 'rules' =>
-  v === 'none' || v === 'folder' || v === 'rules';
+const isDrawerMode = (v: unknown): v is 'none' | 'folder' | 'rules' | 'hints' =>
+  v === 'none' || v === 'folder' || v === 'rules' || v === 'hints';
 
 function toMilestoneSet(milestones: string[] | ReadonlySet<string>): ReadonlySet<string> {
   return milestones instanceof Set ? milestones : new Set(milestones);
@@ -90,7 +105,7 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
   onToggleMilestone,
   showArchitectureBadge = false,
 }: PracticeProjectCardProps) {
-  const [openDrawer, setOpenDrawer] = usePersistedState<'none' | 'folder' | 'rules'>(
+  const [openDrawer, setOpenDrawer] = usePersistedState<'none' | 'folder' | 'rules' | 'hints'>(
     `project.${project.id}.openDrawer`,
     'none',
     isDrawerMode
@@ -272,6 +287,23 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
               ? 'Hide Rules'
               : `Key Rules (${project.architectureRules.length})`}
           </button>
+
+          {project.starterHints && project.starterHints.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setOpenDrawer((d) => (d === 'hints' ? 'none' : 'hints'))}
+              className={`inline-flex items-center gap-1.5 transition ${
+                openDrawer === 'hints'
+                  ? 'text-emerald-600 dark:text-emerald-300'
+                  : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-300'
+              }`}
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+              {openDrawer === 'hints'
+                ? 'Hide Hints'
+                : `Starter Hints (${project.starterHints.length})`}
+            </button>
+          )}
         </div>
 
         {openDrawer === 'folder' && (
@@ -290,6 +322,12 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {openDrawer === 'hints' && project.starterHints && project.starterHints.length > 0 && (
+          <div className="mt-3">
+            <ImplementationDrawer recipes={project.starterHints} variant="inline" />
           </div>
         )}
       </div>

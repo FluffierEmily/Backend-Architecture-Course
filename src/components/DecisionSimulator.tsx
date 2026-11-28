@@ -13,6 +13,7 @@ import {
   Gauge,
   Play,
   Users,
+  Wrench,
 } from 'lucide-react';
 import { ARCHITECTURE_META, ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
 import { SIMULATOR_SCENARIOS } from '../data/simulatorScenarios';
@@ -100,6 +101,7 @@ export function DecisionSimulator({
     false,
     isBoolean
   );
+  const [showMitigations, setShowMitigations] = useState(false);
 
   const setSelectedArch = (arch: ArchitectureId | null) => {
     setSelectedArchState(arch);
@@ -118,12 +120,14 @@ export function DecisionSimulator({
     setSelectedArchState(savedDraft ?? savedCompleted);
     setSimulatedArch(savedCompleted);
     setShowCompareAll(false);
+    setShowMitigations(false);
     setJumpOpen(false);
   };
 
   const handleRunSimulation = () => {
     if (!selectedArch) return;
     setSimulatedArch(selectedArch);
+    setShowMitigations(false);
     onRecordChoice(scenario.id, selectedArch);
   };
 
@@ -383,6 +387,38 @@ export function DecisionSimulator({
                     </li>
                   ))}
                 </ul>
+
+                {outcome.howToMitigate && outcome.howToMitigate.length > 0 && (
+                  <div className="mt-3.5 pt-3 border-t border-stone-200/80 dark:border-slate-700/70">
+                    <button
+                      type="button"
+                      onClick={() => setShowMitigations((prev) => !prev)}
+                      aria-expanded={showMitigations}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-300"
+                    >
+                      <Wrench className="h-3.5 w-3.5" />
+                      {showMitigations
+                        ? 'Hide how teams solve these'
+                        : `How teams solve these (${outcome.howToMitigate.length})`}
+                      {showMitigations ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+
+                    {showMitigations && (
+                      <ul className="mt-2.5 space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] p-3 text-xs leading-6 text-slate-700 dark:text-slate-200">
+                        {outcome.howToMitigate.map((fix) => (
+                          <li key={fix} className="flex gap-2">
+                            <span className="font-bold text-indigo-500">→</span>
+                            <span>{fix}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

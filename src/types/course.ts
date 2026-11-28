@@ -6,6 +6,18 @@ export type ArchitectureId =
 
 export type ProjectArchitectureId = ArchitectureId | 'hybrid';
 
+export interface ImplementationRecipe {
+  id: string;
+  label: string;
+  summary: string;
+  steps: string[];
+  code?: {
+    filename: string;
+    snippet: string;
+  };
+  watchOut?: string;
+}
+
 export interface CodeAnnotation {
   id: string;
   label: string;
@@ -28,6 +40,7 @@ export interface CodeComparisonItem {
   refactoredFile: string;
   refactoredCode: string;
   annotations: CodeAnnotation[];
+  howToImplement?: ImplementationRecipe[];
 }
 
 export interface DiagramNode {
@@ -74,6 +87,7 @@ export interface PitfallItem {
   title: string;
   symptom: string;
   fix: string;
+  howToImplement?: ImplementationRecipe;
 }
 
 export interface MiniDecisionCheckItem {
@@ -101,6 +115,7 @@ export interface PracticeProject {
   folderStructure: string;
   milestones: PracticeProjectMilestone[];
   architectureRules: string[];
+  starterHints?: ImplementationRecipe[];
 }
 
 export interface DeepDiveConcept {
@@ -110,6 +125,7 @@ export interface DeepDiveConcept {
   summary: string;
   bulletPoints?: string[];
   keyTakeaway: string;
+  howToImplement?: ImplementationRecipe[];
 }
 
 export interface ArchitectureModule {
@@ -178,6 +194,7 @@ export interface FoundationBlock {
   howItWorks: string;
   beginnerWatchOut: string;
   relevantArchitectures: ArchitectureId[];
+  howToImplement?: ImplementationRecipe[];
 }
 
 export interface SimulatorScores {
@@ -194,6 +211,7 @@ export interface SimulatorOutcome {
   sixMonthsLater: string;
   whatWorked: string[];
   whatHurt: string[];
+  howToMitigate?: string[];
   scores: SimulatorScores;
 }
 

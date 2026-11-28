@@ -146,6 +146,19 @@ export const serverlessModule: ArchitectureModule = {
       ],
       keyTakeaway:
         'Shrinking your bundle from 25MB to 500KB often cuts cold starts from 1.8 seconds down to ~150ms — for free.',
+      howToImplement: [
+        {
+          id: 'sl-cold-start-checklist',
+          label: 'Cold Start Reduction Checklist',
+          summary:
+            'Eliminate 90% of cold-start pain by trimming bundles first, avoiding unnecessary VPC attachments, and reserving Provisioned Concurrency only on latency-critical routes.',
+          steps: [
+            'Bundle each function separately with `esbuild` (`--bundle --minify --tree-shaking=true`) and import modular clients (`@aws-sdk/client-s3`) instead of full SDKs.',
+            'Keep functions that do NOT query a private RDS database outside a VPC (or use HTTP-based serverless DB proxies so no VPC ENI setup is needed).',
+            'For strict sub-100ms user-facing endpoints (like check-in or checkout), enable **Provisioned Concurrency** on just those 1–2 hot functions (keeps warm instances ready for a small fixed fee).',
+          ],
+        },
+      ],
     },
     {
       id: 'sl-hexagonal-adapter',
@@ -334,6 +347,35 @@ export async function handler(req: { fileKey: string; assetId: string }) {
             'Returning `202 Accepted` with `{ status: "processing" }` immediately frees the client to show a smooth progress indicator.',
         },
       ],
+      howToImplement: [
+        {
+          id: 'sl-presigned-upload',
+          label: 'Presigned S3/R2 Direct Upload Flow',
+          summary:
+            'Bypass API Gateway’s 6MB/10MB payload limit by issuing a short-lived signed upload URL and letting the browser upload straight to object storage.',
+          steps: [
+            'Intake function checks user auth, validates requested `contentType` (`image/jpeg`, `image/png`) and `sizeBytes <= 15MB`, and signs a 5-minute `PUT` URL bound to that exact `ContentType` and `ContentLength`.',
+            'Browser uploads the file directly to S3/R2 using that URL (your Lambda never buffers the 15MB file in RAM!).',
+            'S3/R2 emits an object-created event into a queue (writing output to a *different* prefix like `processed/` to avoid infinite trigger loops).',
+          ],
+          code: {
+            filename: 'functions/createUploadUrl.ts',
+            snippet: `import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+const s3 = new S3Client({}); // initialized outside handler!
+export async function createUploadUrl(key: string, contentType: string, maxBytes: number) {
+  const cmd = new PutObjectCommand({
+    Bucket: process.env.UPLOADS_BUCKET,
+    Key: \`uploads/\${key}\`, // outputs go to processed/ — never uploads/!
+    ContentType: contentType,
+    ContentLength: maxBytes,
+  });
+  return getSignedUrl(s3, cmd, { expiresIn: 300 }); // valid 5 minutes
+}`,
+          },
+        },
+      ],
     },
     {
       id: 'sl-fn-chaining',
@@ -355,44 +397,45 @@ export async function checkoutHandler(order: { id: string; total: number }) {
   // Double-billed compute + combined timeout risk!
   return { statusCode: 200, body: JSON.stringify({ orderId: order.id }) };
 }`,
-      refactoredTitle: 'Refactored: Publishing to a queue / workflow so Checkout exits fast',
+      refactoredTitle: 'Refactored: Atomic Outbox / workflow handoff so Checkout exits fast',
       refactoredFile: 'functions/checkoutHandler.ts',
-      refactoredCode: `import { workflowQueue } from '../shared/queue';
+      refactoredCode: `import { db } from '../shared/db';
 
 export async function checkoutHandler(order: { id: string; total: number }) {
-  await saveOrder(order);
-
-  // Hand off downstream steps asynchronously — exit immediately!
-  await workflowQueue.publish('order.confirmed', {
-    orderId: order.id,
-    total: order.total,
+  // Atomic write: save order + outbox event in 1 DB transaction (no dual-write loss!)
+  await db.transaction(async (tx) => {
+    await tx.saveOrder(order);
+    await tx.insertOutbox('order.confirmed', {
+      orderId: order.id,
+      total: order.total,
+    });
   });
 
-  // Zero idle wait time; invoice & email functions scale & retry independently
+  // Zero idle wait time; relay/workflow triggers invoice & email functions reliably
   return { statusCode: 202, body: JSON.stringify({ orderId: order.id, status: 'confirmed' }) };
 }`,
       annotations: [
         {
           id: 'sl-3-double-bill',
-          label: '1. Double-Billing for Idle Waits',
+          label: '1. Double-Billing & Dual-Write Safety',
           problemLines: [6, 8],
-          refactoredLines: [6, 10],
+          refactoredLines: [4, 11],
           severity: 'high',
           problemExplanation:
             'Serverless bills by execution duration (`GB-seconds`). While `checkoutHandler` awaits `generate-invoice-fn` and `send-receipt-email-fn`, you are paying for BOTH functions simultaneously — and if email fails, checkout crashes!',
           refactoredExplanation:
-            'Publishing one `order.confirmed` message takes ~15ms and terminates `checkoutHandler` immediately. Downstream functions run independently with built-in retries.',
+            'Saving the order and an `order.confirmed` outbox row in ONE transaction takes ~15ms, terminates `checkoutHandler` immediately, and avoids the Dual-Write bug (losing events if the function crashes between saving and publishing).',
         },
         {
           id: 'sl-3-decoupled',
           label: '2. Eliminating Coupled Timeouts',
           problemLines: [10, 11],
-          refactoredLines: [12, 13],
+          refactoredLines: [13, 14],
           severity: 'medium',
           problemExplanation:
             'Chaining synchronous functions stacks their cold starts and timeouts together, making HTTP requests brittle.',
           refactoredExplanation:
-            'Checkout stays fast and reliable even if the PDF generator is temporarily slow — use a durable workflow (Step Functions / Inngest) if steps must run in strict sequence.',
+            'Checkout stays fast and reliable even if the PDF generator is temporarily slow — a relay or durable workflow (Step Functions / Inngest) runs downstream steps with automatic retries.',
         },
       ],
     },
@@ -571,6 +614,29 @@ export async function checkoutHandler(order: { id: string; total: number }) {
       architectureRules: [
         'Keep `intakeWebhook` under 100ms p95 — zero external third-party HTTP calls in the intake path.',
         'Include an event ID check so duplicate webhook deliveries don’t spam the same Discord alert twice.',
+      ],
+      starterHints: [
+        {
+          id: 'sl-p2-hint-hmac',
+          label: 'Raw-Body HMAC Verification',
+          summary:
+            'Always compute the HMAC over the exact raw request string/buffer BEFORE `JSON.parse()`, and compare with `crypto.timingSafeEqual`.',
+          steps: [
+            'Check the provider’s timestamp header first and reject requests older than 5 minutes.',
+            'Compute `createHmac("sha256", secret).update(rawBody).digest()` and compare with `timingSafeEqual`.',
+            'Deduplicate by the provider’s delivery/event ID in Redis (`SETNX evt:<id> 1 EX 86400`) or SQLite.',
+          ],
+          code: {
+            filename: 'src/shared/verifySignature.ts',
+            snippet: `import { createHmac, timingSafeEqual } from 'node:crypto';
+
+export function isValidHmac(rawBody: Buffer, headerSigHex: string, secret: string): boolean {
+  const expected = createHmac('sha256', secret).update(rawBody).digest();
+  const actual = Buffer.from(headerSigHex, 'hex');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}`,
+          },
+        },
       ],
     },
   ],

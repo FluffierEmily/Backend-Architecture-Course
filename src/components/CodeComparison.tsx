@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { CodeAnnotation, CodeComparisonItem } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { ImplementationDrawer } from './ImplementationDrawer';
 
 interface CodeComparisonProps {
   item: CodeComparisonItem;
@@ -650,6 +651,14 @@ export const CodeComparison = memo(function CodeComparison({
             </div>
           ))}
         </div>
+      )}
+
+      {!quizMode && item.howToImplement && item.howToImplement.length > 0 && (
+        <ImplementationDrawer
+          recipes={item.howToImplement}
+          triggerLabel="Under the Hood & Production Edge Cases"
+          className="mt-5"
+        />
       )}
     </div>
   );

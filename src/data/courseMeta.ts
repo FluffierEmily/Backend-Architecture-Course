@@ -89,7 +89,7 @@ export const SIMULATOR_SCENARIO_META: SimulatorScenarioMeta[] = [
 
 export const COURSE_COUNTS = {
   foundationBlocks: 18,
-  beginnerGlossary: 28,
+  beginnerGlossary: 34,
   practiceProjects: 9,
   simulatorScenarios: SIMULATOR_SCENARIO_META.length,
 } as const;

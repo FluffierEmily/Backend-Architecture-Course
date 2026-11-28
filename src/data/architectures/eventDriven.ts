@@ -230,7 +230,7 @@ export async function onTripCompleted(event: {
 
   await ledgerDb.recordCharge(event.tripId, event.fareCents);
 }`,
-      refactoredTitle: 'Refactored: Deduplicating with an idempotency key',
+      refactoredTitle: 'Refactored: Atomic event claim + downstream idempotency key',
       refactoredFile: 'payments-consumer/src/onTripCompleted.ts',
       refactoredCode: `import { stripe } from './stripe';
 import { ledgerDb } from './db';
@@ -241,9 +241,9 @@ export async function onTripCompleted(event: {
   riderId: string;
   fareCents: number;
 }) {
-  // 1. Check if we already processed this unique event / trip
-  const alreadyProcessed = await ledgerDb.hasProcessedEvent(event.eventId);
-  if (alreadyProcessed) {
+  // 1. Atomic claim (UNIQUE on event_id) prevents concurrent race conditions!
+  const claimed = await ledgerDb.claimEventOnce(event.eventId);
+  if (!claimed) {
     return { skipped: true, reason: 'duplicate_event' };
   }
 
@@ -253,19 +253,19 @@ export async function onTripCompleted(event: {
     { idempotencyKey: \`trip-charge-\${event.tripId}\` }
   );
 
-  await ledgerDb.recordChargeAndEvent(event.tripId, event.eventId, event.fareCents);
+  await ledgerDb.recordCharge(event.tripId, event.eventId, event.fareCents);
 }`,
       annotations: [
         {
           id: 'eda-1-dup-charge',
-          label: '1. Double-Charge on Retry',
+          label: '1. Double-Charge & Check-Then-Act Race',
           problemLines: [10, 15],
           refactoredLines: [10, 14],
           severity: 'high',
           problemExplanation:
-            'If the consumer crashes right after `stripe.charges.create()` but before acknowledging the message, the broker redelivers `TripCompleted` and charges the rider a second time!',
+            'If the consumer crashes right after `stripe.charges.create()` — or two duplicate deliveries arrive simultaneously — the rider gets charged twice for the exact same ride!',
           refactoredExplanation:
-            'Checking a unique `eventId` (backed by a database UNIQUE constraint) makes duplicate deliveries harmless no-ops.',
+            'Atomically claiming `eventId` via `INSERT INTO processed_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING` eliminates the check-then-act race window and makes duplicates harmless no-ops.',
         },
         {
           id: 'eda-1-stripe-key',
@@ -277,6 +277,32 @@ export async function onTripCompleted(event: {
             'Even if your local DB is fast, a crash between Stripe and `ledgerDb` still leaves no proof that Stripe already charged the card.',
           refactoredExplanation:
             'Passing `idempotencyKey: "trip-charge-<tripId>"` ensures Stripe itself refuses to charge the same trip twice across retries.',
+        },
+      ],
+      howToImplement: [
+        {
+          id: 'eda-inbox-pattern',
+          label: 'Atomic Inbox Pattern (For DB-Only Consumers)',
+          summary:
+            'When a consumer updates your own database (like decrementing inventory), put the `processed_events` insert and domain `UPDATE` inside ONE SQL transaction.',
+          steps: [
+            'Create `processed_events (event_id TEXT PRIMARY KEY, processed_at TIMESTAMPTZ DEFAULT NOW())`.',
+            'Inside one transaction, run `INSERT INTO processed_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING event_id`.',
+            'If 0 rows return, commit and exit early — otherwise run your domain `UPDATE` in the exact same transaction so they succeed or roll back atomically.',
+          ],
+          code: {
+            filename: 'inventory-consumer/src/onOrderPlaced.ts',
+            snippet: `await db.transaction(async (tx) => {
+  const claimed = await tx.queryOne(
+    \`INSERT INTO processed_events (event_id) VALUES ($1)
+     ON CONFLICT (event_id) DO NOTHING RETURNING event_id\`,
+    [event.eventId]
+  );
+  if (!claimed) return; // duplicate delivery — safe no-op!
+
+  await tx.query('UPDATE inventory SET qty = qty - $1 WHERE sku = $2', [event.qty, event.sku]);
+});`,
+          },
         },
       ],
     },
@@ -424,52 +450,82 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
     await db.query(\`UPDATE outbox_events SET status = 'PUBLISHED' WHERE id = $1\`, [row.id]);
   }
 }`,
-      refactoredTitle: 'Refactored: FOR UPDATE SKIP LOCKED + versioned event envelope',
+      refactoredTitle: 'Refactored: Short SKIP LOCKED claim + publish outside DB lock',
       refactoredFile: 'trip-service/src/outboxRelay.ts',
       refactoredCode: `export async function pollAndPublishOutbox() {
-  await db.transaction(async (tx) => {
-    // SKIP LOCKED lets multiple relay replicas claim disjoint batches safely
-    const rows = await tx.query(
-      \`SELECT id, event_type, correlation_id, payload FROM outbox_events
-       WHERE status = 'PENDING'
-       ORDER BY created_at ASC LIMIT 50
-       FOR UPDATE SKIP LOCKED\`
-    );
+  // 1. Short DB tx claims disjoint rows with SKIP LOCKED (no network call inside tx!)
+  const rows = await db.query(
+    \`UPDATE outbox_events SET status = 'PROCESSING', locked_until = NOW() + INTERVAL '30s'
+     WHERE id IN (
+       SELECT id FROM outbox_events
+       WHERE status = 'PENDING' OR (status = 'PROCESSING' AND locked_until < NOW())
+       ORDER BY created_at ASC LIMIT 50 FOR UPDATE SKIP LOCKED
+     ) RETURNING id, event_type, correlation_id, payload, attempts\`
+  );
 
-    for (const row of rows) {
-      // Standard schema-versioned envelope keeps consumer upgrades safe
+  // 2. Publish outside the DB lock with a versioned envelope & failure cap
+  for (const row of rows) {
+    try {
       await broker.publish(row.event_type, {
-        eventId: row.id,
-        schemaVersion: 2,
-        correlationId: row.correlation_id,
-        data: row.payload,
+        eventId: row.id, schemaVersion: 2, correlationId: row.correlation_id, data: row.payload,
       });
-      await tx.query(\`UPDATE outbox_events SET status = 'PUBLISHED' WHERE id = $1\`, [row.id]);
+      await db.query(\`UPDATE outbox_events SET status = 'PUBLISHED' WHERE id = $1\`, [row.id]);
+    } catch {
+      const nextStatus = row.attempts >= 4 ? 'FAILED' : 'PENDING';
+      await db.query(\`UPDATE outbox_events SET status = $1, attempts = attempts + 1 WHERE id = $2\`, [nextStatus, row.id]);
     }
-  });
+  }
 }`,
       annotations: [
         {
           id: 'eda-4-skip-locked',
-          label: '1. Duplicate Relay Contention',
+          label: '1. Duplicate Contention & Long DB Locks',
           problemLines: [2, 6],
-          refactoredLines: [2, 9],
+          refactoredLines: [2, 10],
           severity: 'high',
           problemExplanation:
-            'When 3 relay containers run concurrently, plain `SELECT ... WHERE status = PENDING` returns the exact same 50 rows to all 3 workers, tripling broker load and causing noisy duplicate deliveries.',
+            'Plain `SELECT ... WHERE status = PENDING` returns identical rows to all 3 relay replicas. Worse, holding a SQL transaction open while making 50 network calls to Kafka pins database connections!',
           refactoredExplanation:
-            'Wrapping the poll in a transaction with `FOR UPDATE SKIP LOCKED` lets each worker lock and claim its own exclusive batch of rows while other workers smoothly skip ahead.',
+            'A single fast `UPDATE ... FOR UPDATE SKIP LOCKED RETURNING` claims an exclusive batch with a 30s lease (so crashed relays auto-recover) and immediately releases the DB lock before network I/O.',
         },
         {
           id: 'eda-4-envelope',
-          label: '2. Unversioned Event Contracts',
+          label: '2. Versioned Envelope & Poison-Row Cap',
           problemLines: [8, 12],
-          refactoredLines: [11, 20],
+          refactoredLines: [12, 23],
           severity: 'medium',
           problemExplanation:
-            'Publishing raw unversioned payloads without `eventId`, `schemaVersion`, or `correlationId` makes tracing cross-service incidents and evolving fields safely nearly impossible.',
+            'Publishing raw unversioned payloads without `eventId`, `schemaVersion`, or `correlationId` breaks tracing and schema evolution — and one unpublishable row retries forever.',
           refactoredExplanation:
-            'Wrapping data in a standard versioned envelope enables consumer idempotency, distributed tracing, and backward-compatible schema evolution (or swap polling for Debezium CDC at high scale).',
+            'Publishing outside the lock with a standard versioned envelope and capping `attempts` (`FAILED` after 5 tries) keeps relay workers healthy without blocking other events.',
+        },
+      ],
+      howToImplement: [
+        {
+          id: 'eda-outbox-schema-cleanup',
+          label: 'Outbox Table Schema, Index & Cleanup',
+          summary:
+            'Add a partial index on `PENDING` rows so polling stays O(1), and schedule periodic cleanup so `PUBLISHED` rows never bloat Postgres to millions of rows.',
+          steps: [
+            'Create `outbox_events` with `status`, `attempts`, `locked_until`, and `correlation_id` columns.',
+            'Add a **partial index** `WHERE status IN (\'PENDING\', \'PROCESSING\')` so Postgres only indexes the tiny active backlog.',
+            'Run a daily cron job deleting `PUBLISHED` rows older than 7 days (or partition by day) to keep disk and vacuuming healthy.',
+          ],
+          code: {
+            filename: 'migrations/001_outbox_events.sql',
+            snippet: `CREATE TABLE outbox_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  correlation_id TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  attempts INT NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_outbox_active ON outbox_events (created_at)
+  WHERE status IN ('PENDING', 'PROCESSING');`,
+          },
         },
       ],
     },
@@ -526,6 +582,19 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       title: 'Storing Sensitive PII in Immutable Event Logs',
       symptom: 'A customer invokes their GDPR "right to be forgotten," but their raw email and address are permanently baked into 90 days of immutable Kafka topics.',
       fix: 'Keep raw PII in an encrypted reference store (emit only `userId`) or encrypt per-user fields with erasable keys (crypto-shredding).',
+      howToImplement: {
+        id: 'eda-crypto-shredding',
+        label: 'How Crypto-Shredding Works',
+        summary:
+          'When an event must carry PII in an immutable log, encrypt PII fields with a unique per-user key stored in a normal mutable database table.',
+        steps: [
+          'Keep a mutable `user_encryption_keys (user_id, dek_ciphertext)` table protected by your KMS.',
+          'Before publishing an event, encrypt only PII fields (`email`, `address`) with that user’s DEK while leaving `userId`, `fareCents`, and `city` readable for analytics.',
+          'When a user requests GDPR deletion, delete their row in `user_encryption_keys` — historical Kafka events stay intact structurally, while the PII becomes permanently unreadable ciphertext.',
+        ],
+        watchOut:
+          'Simplest default for beginners: omit raw PII from events altogether and emit only `userId`, fetching contact details from an encrypted profile service (with short caching) only in consumers that truly need it.',
+      },
     },
     {
       title: 'Passing Large Blobs Inside Messages',
@@ -536,6 +605,31 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       title: 'Silent Consumer Lag & Poison Pill Stalls',
       symptom: 'One malformed message retries forever and blocks its entire partition while consumer lag quietly grows to hours with nobody alerted.',
       fix: 'Cap retries, route unparseable poison pills to a Dead Letter Queue, and set automated alerts on both consumer lag and DLQ depth.',
+      howToImplement: {
+        id: 'eda-dlq-routing-redrive',
+        label: 'Poison Pill Routing & Safe DLQ Redrive',
+        summary:
+          'Send permanent schema/validation errors straight to the DLQ (zero wasted retries), retry transient outages up to N times, and replay DLQ messages safely once fixed.',
+        steps: [
+          'Validate payloads at consumer entry (e.g., with Zod). On `ValidationError`, publish immediately to `<topic>.dlq` with `{ originalEvent, error, failedAt }` and ack the main queue.',
+          'On transient errors (`503`, DB timeout), retry with exponential backoff up to N attempts (e.g., 3–5) before moving to the DLQ.',
+          'To **redrive (replay)** after deploying a fix: inspect 1 DLQ message, test replay on 1–5 messages first, then redrive in throttled batches (your idempotent consumer keeps retries safe!).',
+        ],
+        code: {
+          filename: 'consumers/handleMessage.ts',
+          snippet: `try {
+  const parsed = TripEventSchema.parse(rawMsg); // throws ZodError if malformed
+  await processTrip(parsed);
+} catch (err) {
+  const isPermanent = err instanceof ZodError;
+  if (isPermanent || rawMsg.attempts >= 3) {
+    await broker.publish('trip.completed.dlq', { rawMsg, reason: String(err) });
+    return; // ack original so partition keeps moving!
+  }
+  throw err; // transient error -> broker retries with backoff
+}`,
+        },
+      },
     },
     {
       title: 'Event Spaghetti (Hard-to-Trace Pinball Chains)',
@@ -546,6 +640,26 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       title: 'Assuming Strict Global Ordering',
       symptom: '`TripCompleted` arrives before `TripStarted` due to parallel consumers, corrupting status fields.',
       fix: 'Partition events by entity ID (e.g., `tripId`) and guard state transitions defensively.',
+      howToImplement: {
+        id: 'eda-defensive-state-guard',
+        label: 'Guard State Transitions in SQL',
+        summary:
+          'Even with partition keys (Kafka key / SQS FIFO `MessageGroupId`), retries can still deliver an older event late — enforce monotonic state/version checks in SQL.',
+        steps: [
+          'Include a monotonic `entityVersion` (or sequence number) on every event emitted for that entity.',
+          'Only apply an update if the incoming version is newer (`WHERE last_version < $incomingVersion`) AND the transition is legal (e.g., never regress `COMPLETED` back to `STARTED`).',
+          'If 0 rows update because a newer state is already stored, log and ack the stale event safely.',
+        ],
+        code: {
+          filename: 'consumers/updateTripStatus.sql',
+          snippet: `-- Stale/out-of-order TripStarted (version 1) cannot overwrite TripCompleted (version 2)
+UPDATE trip_projections
+SET status = $1, last_version = $2
+WHERE trip_id = $3
+  AND last_version < $2
+  AND status <> 'COMPLETED';`,
+        },
+      },
     },
   ],
   miniChecks: [
@@ -653,6 +767,19 @@ export async function backfillAnalytics(oldTrips: Trip[]) {
       architectureRules: [
         'Never publish to the broker inside the HTTP handler directly — always go through the Outbox table.',
         'Attach a `correlationId` to every event so you can trace one expense across all three consumer logs.',
+      ],
+      starterHints: [
+        {
+          id: 'eda-p2-hint-dlq',
+          label: 'Outbox Table + DLQ Routing Starter',
+          summary:
+            'Use a simple `attempts` counter and Zod schema check in your consumer so malformed payloads move to `expenses.dlq` after 3 retries without crashing.',
+          steps: [
+            'Create `outbox_events (id, event_type, correlation_id, payload, status, attempts, created_at)` in SQLite/Postgres.',
+            'In your relay, claim pending rows, publish `{ eventId, correlationId, data }`, and mark `PUBLISHED`.',
+            'In each consumer, route Zod parse errors or `attempts >= 3` to an `expenses.dlq` stream/queue and ack the bad message.',
+          ],
+        },
       ],
     },
   ],

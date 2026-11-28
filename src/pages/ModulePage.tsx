@@ -23,6 +23,7 @@ import {
 } from '../components/ArchitectureIcon';
 import { MiniDecisionCheck } from '../components/MiniDecisionCheck';
 import { PatternDiagram, hasPatternDiagram } from '../components/PatternDiagram';
+import { ImplementationDrawer } from '../components/ImplementationDrawer';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -446,6 +447,14 @@ function ModulePageContent({
                   {activeConcept.keyTakeaway}
                 </div>
 
+                {activeConcept.howToImplement && activeConcept.howToImplement.length > 0 && (
+                  <ImplementationDrawer
+                    recipes={activeConcept.howToImplement}
+                    triggerLabel="How to Implement"
+                    className="mt-4"
+                  />
+                )}
+
                 {conceptIdx < mod.deepDiveConcepts.length - 1 && (
                   <div className="mt-6 flex justify-end border-t border-stone-200 pt-4 dark:border-slate-700/80">
                     <button
@@ -497,6 +506,14 @@ function ModulePageContent({
                       <strong>Key Takeaway: </strong>
                       {concept.keyTakeaway}
                     </div>
+
+                    {concept.howToImplement && concept.howToImplement.length > 0 && (
+                      <ImplementationDrawer
+                        recipes={concept.howToImplement}
+                        triggerLabel="How to Implement"
+                        className="mt-4"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -670,6 +687,14 @@ function ModulePageContent({
                         <strong className="text-emerald-700 dark:text-emerald-300">Fix: </strong>
                         {pf.fix}
                       </p>
+                      {pf.howToImplement && (
+                        <ImplementationDrawer
+                          recipes={[pf.howToImplement]}
+                          triggerLabel="How to implement"
+                          variant="compact"
+                          className="mt-3"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

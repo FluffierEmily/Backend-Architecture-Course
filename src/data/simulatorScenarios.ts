@@ -58,6 +58,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
           'Local end-to-end testing and relational DB pooling took extra setup.',
           'Cold starts occasionally annoyed clinic receptionists during check-in.',
         ],
+        howToMitigate: [
+          'Trim bundles with esbuild, initialize a tiny `Pool({ max: 2 })` outside the handler pointing at PgBouncer/RDS Proxy, and enable Provisioned Concurrency only on the check-in route.',
+        ],
         scores: { devSpeed: 3, opsSimplicity: 4, scaling: 5, costEfficiency: 5, faultIsolation: 4 },
       },
       'event-driven': {
@@ -396,6 +399,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
         ],
         whatHurt: [
           'Needed rate-limit throttling on workers so bursts didn’t hit HubSpot’s API limit.',
+        ],
+        howToMitigate: [
+          'Cap worker concurrency per external vendor (e.g., max 20 in-flight HubSpot requests) and handle HTTP `429` by reading `Retry-After` + jitter to delay jobs instead of burning DLQ retries.',
         ],
         scores: { devSpeed: 5, opsSimplicity: 5, scaling: 5, costEfficiency: 5, faultIsolation: 5 },
       },
@@ -794,6 +800,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
           'Unthrottled parallel bursts triggered constant LLM 429 errors without strict queue concurrency caps.',
           'Paying for idle waiting during slow 20–40s LLM streaming calls got expensive.',
         ],
+        howToMitigate: [
+          'Set reserved concurrency / token-bucket limits on embedding workers and delay `429` jobs using `Retry-After` + jitter; host long SSE chat streams on containers or streaming-optimized edge workers.',
+        ],
         scores: { devSpeed: 4, opsSimplicity: 4, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
       },
       microservices: {
@@ -841,6 +850,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
         whatHurt: [
           'Had to enforce cursor pagination and per-tenant rate limits so giant exports couldn’t hog workers.',
         ],
+        howToMitigate: [
+          'Use composite `(created_at, id)` cursor pagination, split interactive jobs from bulk export queues (fair per-tenant caps), and route heavy reporting reads to a Read Replica.',
+        ],
         scores: { devSpeed: 5, opsSimplicity: 5, scaling: 4, costEfficiency: 5, faultIsolation: 4 },
       },
       microservices: {
@@ -868,6 +880,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
         whatHurt: [
           'Transaction-mode connection pooling + Postgres session RLS needed extra care.',
         ],
+        howToMitigate: [
+          'Wrap every tenant query in a DB transaction and run `SELECT set_config(\'app.tenant_id\', $1, true)` (`SET LOCAL`) — never connection-wide `SET`, which leaks Tenant A into Tenant B on reused pooled connections.',
+        ],
         scores: { devSpeed: 3, opsSimplicity: 4, scaling: 4, costEfficiency: 4, faultIsolation: 4 },
       },
       'event-driven': {
@@ -880,6 +895,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
         ],
         whatHurt: [
           'Permission & billing changes needed immediate ACID reads, not eventual consistency.',
+        ],
+        howToMitigate: [
+          'Keep RBAC/session revocation synchronous (check primary Postgres or a fast Redis `revoked:user:{id}` key on short-lived 5–15m JWTs) while keeping compliance audit logs async.',
         ],
         scores: { devSpeed: 2, opsSimplicity: 2, scaling: 4, costEfficiency: 3, faultIsolation: 4 },
       },
@@ -915,6 +933,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
         whatHurt: [
           'Required graceful WebSocket draining on Realtime deploys and strong distributed tracing.',
         ],
+        howToMitigate: [
+          'On `SIGTERM`, stop accepting new sockets and close existing ones in staggered batches (close code `1012`) over 15–30s; pair with client exponential backoff + random jitter so 250k clients never stampede back at once.',
+        ],
         scores: { devSpeed: 4, opsSimplicity: 2, scaling: 5, costEfficiency: 4, faultIsolation: 5 },
       },
       'modular-monolith': {
@@ -928,6 +949,9 @@ export const SIMULATOR_SCENARIOS: SimulatorScenario[] = [
         whatHurt: [
           'Shared deployments caused constant WebSocket reconnect storms.',
           '50 engineers across 3 languages collided constantly.',
+        ],
+        howToMitigate: [
+          'Even if you temporarily keep WebSockets on a shared app, add client reconnect backoff with full jitter and staggered `SIGTERM` socket draining before extracting the Realtime service.',
         ],
         scores: { devSpeed: 2, opsSimplicity: 3, scaling: 1, costEfficiency: 3, faultIsolation: 1 },
       },

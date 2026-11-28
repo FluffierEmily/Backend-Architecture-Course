@@ -120,9 +120,9 @@ describe('Course content integrity', () => {
     }
   });
 
-  it('provides all 18 foundation blocks and 28 glossary terms covering core & advanced gaps', () => {
+  it('provides all 18 foundation blocks and 34 glossary terms covering core & advanced gaps', () => {
     expect(FOUNDATION_BLOCKS.length).toBeGreaterThanOrEqual(18);
-    expect(BEGINNER_GLOSSARY.length).toBeGreaterThanOrEqual(28);
+    expect(BEGINNER_GLOSSARY.length).toBeGreaterThanOrEqual(34);
     const ids = FOUNDATION_BLOCKS.map((b) => b.id);
     expect(ids).toContain('caching');
     expect(ids).toContain('rate-limiting-backpressure');
@@ -136,6 +136,15 @@ describe('Course content integrity', () => {
     expect(ids).toContain('safe-deployments');
     expect(ids).toContain('multi-tenancy');
     expect(ids).toContain('availability-dr');
+
+    const blocksWithGuides = FOUNDATION_BLOCKS.filter((b) => (b.howToImplement?.length ?? 0) > 0);
+    expect(blocksWithGuides.length).toBeGreaterThanOrEqual(9);
+    for (const block of blocksWithGuides) {
+      for (const recipe of block.howToImplement ?? []) {
+        expect(recipe.steps.length).toBeGreaterThanOrEqual(2);
+        expect(recipe.summary.length).toBeGreaterThan(20);
+      }
+    }
   });
 
   it('keeps lightweight courseMeta in sync with full course data modules', () => {

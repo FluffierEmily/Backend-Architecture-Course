@@ -30,6 +30,7 @@ import { FOUNDATION_BLOCKS } from '../data/foundations';
 import type { FoundationBlock } from '../types/course';
 import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
 import { FoundationDiagram, hasFoundationDiagram } from './FoundationDiagram';
+import { ImplementationDrawer } from './ImplementationDrawer';
 import { ArchitectureIcon } from './ArchitectureIcon';
 import { usePersistedState } from '../hooks/usePersistedState';
 
@@ -247,6 +248,13 @@ export function FoundationsPlayground({
                 {activeBlock.beginnerWatchOut}
               </p>
             </div>
+
+            {activeBlock.howToImplement && activeBlock.howToImplement.length > 0 && (
+              <ImplementationDrawer
+                recipes={activeBlock.howToImplement}
+                triggerLabel="How to Implement"
+              />
+            )}
           </div>
 
           {/* Single Primary Action Footer */}

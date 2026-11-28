@@ -121,14 +121,14 @@ const DB_SPLIT_STEPS = [
       'Replace cross-module foreign keys and JOINs with module API calls so tables are logically independent.',
   },
   {
-    step: '2. Dual-Write or CDC Sync',
+    step: '2. Outbox / CDC Sync',
     detail:
-      'Stream writes from the old tables into the new private database using an Outbox or Debezium CDC.',
+      'Stream writes from old tables into the new DB via an Outbox or Debezium CDC (prefer over raw dual-writes, which drift on partial failures).',
   },
   {
-    step: '3. Backfill & Verify Parity',
+    step: '3. Backfill & Shadow Reads',
     detail:
-      'Copy historical rows and run shadow read comparisons until old and new databases match 100%.',
+      'Copy past rows, then run shadow reads (query both DBs in the background, log diffs, and still return the old DB’s answer) until parity hits 100%.',
   },
   {
     step: '4. Cut Over & Retire',

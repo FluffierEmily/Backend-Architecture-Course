@@ -141,6 +141,31 @@ export const microservicesModule: ArchitectureModule = {
       ],
       keyTakeaway:
         'Sagas trade instant ACID rollback for eventual consistency — design explicit undo/refund steps for every multi-service workflow.',
+      howToImplement: [
+        {
+          id: 'ms-durable-saga-state',
+          label: 'Persist Saga State (Crash-Safe Rollbacks)',
+          summary:
+            'Never rely solely on an in-memory `try/catch` to run refunds — persist every Saga step in a `saga_runs` table (or durable workflow like Temporal/Step Functions) so crashes still recover.',
+          steps: [
+            'Create a `saga_runs (id, state, charge_id, updated_at)` table before calling Step 1.',
+            'Update `state` after each remote call (`STARTED` → `CHARGED` → `COMPLETED` or `COMPENSATING` → `REFUNDED`).',
+            'Run a lightweight recovery job every minute that finds sagas stuck in `CHARGED` or `COMPENSATING` for >2 minutes and triggers the idempotent refund automatically.',
+          ],
+          code: {
+            filename: 'checkout-orchestrator/src/recoverStuckSagas.ts',
+            snippet: `// Recovery worker catches crashes that happened right after charging
+const stuck = await db.query(
+  \`SELECT id, charge_id FROM saga_runs
+   WHERE state IN ('CHARGED', 'COMPENSATING')
+     AND updated_at < NOW() - INTERVAL '2 minutes' LIMIT 20\`
+);
+for (const saga of stuck) {
+  await refundQueue.enqueue({ chargeId: saga.charge_id, idempotencyKey: \`\${saga.id}-refund\` });
+}`,
+          },
+        },
+      ],
     },
     {
       id: 'ms-cross-queries',
@@ -167,6 +192,47 @@ export const microservicesModule: ArchitectureModule = {
       ],
       keyTakeaway:
         'Failing fast with a cached fallback beats waiting 5 seconds for a guaranteed timeout — and gives struggling downstream services breathing room to recover.',
+      howToImplement: [
+        {
+          id: 'ms-cb-opossum',
+          label: 'Circuit Breaker in Node.js',
+          summary:
+            'Wrap flaky downstream calls in a battle-tested library like `opossum` (or `cockatiel`) with a strict timeout and cached fallback.',
+          steps: [
+            'Set a per-call timeout (e.g., `250ms`), a failure threshold (e.g., 50% errors), and a cooldown `resetTimeout` (e.g., `15_000ms`).',
+            'Register a `.fallback()` that returns a safe cached response (`TRENDING_FALLBACK`) whenever the breaker is OPEN.',
+            'Emit a metric/log on `open` and `close` events so your team gets alerted when a dependency degrades.',
+          ],
+          code: {
+            filename: 'home-bff/src/clients/recsBreaker.ts',
+            snippet: `import CircuitBreaker from 'opossum';
+
+const recsBreaker = new CircuitBreaker(
+  (userId: string) => fetchJsonWithTimeout(\`http://recs-svc/users/\${userId}/picks\`, 250),
+  { timeout: 300, errorThresholdPercentage: 50, resetTimeout: 15_000 }
+);
+recsBreaker.fallback(() => TRENDING_FALLBACK);
+recsBreaker.on('open', () => logger.warn('recs-svc breaker OPEN — serving fallback'));`,
+          },
+        },
+        {
+          id: 'ms-bulkhead-pool',
+          label: 'Bulkhead (Capped Concurrency Pool)',
+          summary:
+            'Give each downstream dependency its own connection/concurrency cap so one slow service cannot steal all sockets from healthy services.',
+          steps: [
+            'Create separate HTTP connection pools (e.g., `undici.Pool` with `connections: 20`) or concurrency limiters (`p-limit(20)`) per downstream service.',
+            'If `recs-svc` saturates its 20-request bulkhead, immediately reject/fallback the 21st call while `playback-svc` keeps its own dedicated 100-connection pool untouched.',
+          ],
+          code: {
+            filename: 'home-bff/src/clients/bulkheads.ts',
+            snippet: `import { Pool } from 'undici';
+
+export const playbackPool = new Pool('http://playback-svc', { connections: 100 });
+export const recsPool = new Pool('http://recs-svc', { connections: 20 }); // isolated cap!`,
+          },
+        },
+      ],
     },
     {
       id: 'ms-api-versioning',
@@ -194,6 +260,57 @@ export const microservicesModule: ArchitectureModule = {
       ],
       keyTakeaway:
         'Use REST or a GraphQL BFF at the public edge, and reach for gRPC internally when strict typed contracts and low-latency binary calls matter.',
+      howToImplement: [
+        {
+          id: 'ms-gql-dataloader',
+          label: 'Fix GraphQL N+1 (DataLoader)',
+          summary:
+            'Create a fresh `DataLoader` per incoming GraphQL request to automatically batch dozens of individual field resolver lookups into one single batch call.',
+          steps: [
+            'Instantiate `new DataLoader(batchFn)` inside the GraphQL `context` factory (per request — never share one DataLoader globally or you will leak data across users!).',
+            'Inside resolvers (e.g., `Invoice.user`), call `ctx.userLoader.load(invoice.userId)`.',
+            'DataLoader waits one event-loop tick, deduplicates IDs, and sends a single `POST /users/batch` request.',
+          ],
+          code: {
+            filename: 'graphql-bff/src/context.ts',
+            snippet: `import DataLoader from 'dataloader';
+
+export function createContext() {
+  return {
+    userLoader: new DataLoader(async (ids: readonly string[]) => {
+      const users = await postJsonWithTimeout('http://users-svc/users/batch', { ids }, 300);
+      const byId = new Map(users.map((u) => [u.id, u]));
+      return ids.map((id) => byId.get(id) ?? null); // MUST preserve input order!
+    }),
+  };
+}`,
+          },
+          watchOut:
+            'Always return results in the EXACT same order and length as the input `ids` array, or DataLoader will attach User A’s data to User B’s invoice!',
+        },
+        {
+          id: 'ms-gql-depth-caching',
+          label: 'Fix GraphQL Depth DoS & GET Caching',
+          summary:
+            'Prevent malicious nested queries with depth/complexity caps, and unlock CDN caching with Persisted Queries over HTTP GET.',
+          steps: [
+            'Add a query depth limit (e.g., `graphql-depth-limit` with max depth `5`) and cost/complexity budget so attackers cannot send `{ user { friends { friends { ... } } } }`.',
+            'Enable **Persisted Queries** (clients send a short SHA-256 query hash via HTTP `GET /graphql?extensions=...` instead of a giant `POST` body) so CDNs can cache public read responses.',
+            'In production, optionally enforce a strict persisted-query allowlist so clients can only run pre-approved queries.',
+          ],
+          code: {
+            filename: 'graphql-bff/src/server.ts',
+            snippet: `import depthLimit from 'graphql-depth-limit';
+
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  validationRules: [depthLimit(5)], // blocks deeply nested DoS queries
+  persistedQueries: { ttl: 900 },   // enables cacheable GET requests by query hash
+});`,
+          },
+        },
+      ],
     },
     {
       id: 'ms-service-discovery-mesh',
@@ -355,6 +472,29 @@ export async function getHomeFeed(userId: string) {
             'If Recommendations fails or times out, the feed gracefully substitutes `TRENDING_FALLBACK` and flags `degraded: true` for monitoring.',
         },
       ],
+      howToImplement: [
+        {
+          id: 'ms-fetch-timeout-helper',
+          label: 'Build fetchJsonWithTimeout()',
+          summary:
+            'Use Node.js’s built-in `AbortSignal.timeout(ms)` so hung sockets abort cleanly without manual `setTimeout` leaks.',
+          steps: [
+            'Pass `signal: AbortSignal.timeout(timeoutMs)` directly into `fetch()`.',
+            'Always check `resp.ok` — `fetch()` does not reject on HTTP 500/503 responses by default!',
+            'Forward `x-request-id` so the downstream service logs link back to this BFF request.',
+          ],
+          code: {
+            filename: 'home-bff/src/http.ts',
+            snippet: `export async function fetchJsonWithTimeout<T>(url: string, timeoutMs: number): Promise<T> {
+  const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!resp.ok) {
+    throw new Error(\`Upstream \${url} failed with HTTP \${resp.status}\`);
+  }
+  return resp.json() as Promise<T>;
+}`,
+          },
+        },
+      ],
     },
     {
       id: 'ms-n-plus-one-bff',
@@ -437,7 +577,7 @@ export async function getHomeFeed(userId: string) {
   });
   return { chargeId: payment.id };
 }`,
-      refactoredTitle: 'Refactored: Client Idempotency-Key + Saga compensating refund queue',
+      refactoredTitle: 'Refactored: Idempotency-Key + Durable Saga step & undo',
       refactoredFile: 'checkout-orchestrator/src/purchaseBundle.ts',
       refactoredCode: `export async function purchaseBundle(userId: string, bundleId: string, idemKey: string) {
   // 1. Forward client Idempotency-Key so retries never double-charge
@@ -447,6 +587,8 @@ export async function getHomeFeed(userId: string) {
     timeoutMs: 500,
     backoffWithJitter: true,
   });
+  // Persist saga step so a crash mid-flight still triggers recovery
+  await sagaStore.recordStep(idemKey, 'CHARGED', { chargeId: payment.id });
 
   try {
     await postWithRetry('http://playback-svc/entitlements', {
@@ -454,10 +596,11 @@ export async function getHomeFeed(userId: string) {
       body: { userId, bundleId },
       timeoutMs: 500,
     });
+    await sagaStore.recordStep(idemKey, 'COMPLETED');
     return { chargeId: payment.id, status: 'completed' };
   } catch (err) {
-    // 2. Saga compensating action: idempotent refund unwinds Step 1
-    await refundQueue.enqueue({ chargeId: payment.id, idempotencyKey: \`\${idemKey}-refund\` });
+    // 2. Durable Saga undo: enqueue idempotent refund (recovery worker catches crashes too)
+    await sagaStore.enqueueCompensation(idemKey, { chargeId: payment.id });
     throw err;
   }
 }`,
@@ -475,14 +618,42 @@ export async function getHomeFeed(userId: string) {
         },
         {
           id: 'ms-4-saga-undo',
-          label: '2. Missing Saga Compensating Action',
+          label: '2. Missing Durable Saga Compensation',
           problemLines: [8, 13],
-          refactoredLines: [10, 21],
+          refactoredLines: [9, 24],
           severity: 'high',
           problemExplanation:
-            'Because Billing and Playback own separate databases, there is no shared SQL rollback. If `playback-svc` returns 503, the viewer paid for a match they cannot watch!',
+            'Because Billing and Playback own separate databases, there is no shared SQL rollback. If `playback-svc` returns 503 — or this orchestrator crashes mid-flight — the viewer paid for a match they cannot watch!',
           refactoredExplanation:
-            'Enqueueing a durable, idempotent refund job guarantees Step 1 is cleanly compensated even if Billing is briefly unreachable during rollback.',
+            'Persisting the `CHARGED` step in `sagaStore` and enqueueing a durable, idempotent refund guarantees Step 1 is cleanly compensated even if this process crashes before `catch` runs.',
+        },
+      ],
+      howToImplement: [
+        {
+          id: 'ms-post-with-retry',
+          label: 'Build postWithRetry() Safely',
+          summary:
+            'Retry ONLY transient failures (network errors, 429, 502/503/504) with exponential backoff + full jitter — never retry 4xx validation or card-declined errors.',
+          steps: [
+            'Require an `Idempotency-Key` before retrying any `POST` mutation.',
+            'Stop immediately on `400`, `401`, `403`, `404`, or `422` (retrying permanent client errors wastes capacity and adds latency).',
+            'Compute `delay = Math.random() * Math.min(maxMs, baseMs * 2 ** attempt)` so failing callers spread out instead of hammering together.',
+          ],
+          code: {
+            filename: 'checkout-orchestrator/src/httpRetry.ts',
+            snippet: `export async function postWithRetry(url: string, opts: { headers: Record<string, string>; body: unknown; timeoutMs: number }) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await fetch(url, {
+      method: 'POST', headers: { 'content-type': 'application/json', ...opts.headers },
+      body: JSON.stringify(opts.body), signal: AbortSignal.timeout(opts.timeoutMs),
+    });
+    if (resp.ok) return resp.json();
+    if (resp.status < 500 && resp.status !== 429) throw new Error(\`Permanent \${resp.status}\`);
+    await new Promise((r) => setTimeout(r, Math.random() * Math.min(2000, 100 * 2 ** attempt)));
+  }
+  throw new Error('Exhausted retries');
+}`,
+          },
         },
       ],
     },
@@ -549,11 +720,52 @@ export async function getHomeFeed(userId: string) {
       title: 'Retry Storms',
       symptom: 'A struggling service gets 10x more traffic because upstream services immediately retry failed calls in tight loops.',
       fix: 'Use exponential backoff with jitter and wrap failing dependencies in a Circuit Breaker.',
+      howToImplement: {
+        id: 'ms-retry-jitter-formula',
+        label: 'Exponential Backoff + Full Jitter',
+        summary:
+          'Randomize retry delays so 500 failed requests do not synchronize and slam the recovering service on the exact same millisecond.',
+        steps: [
+          'Cap retries at 2–3 attempts (never retry indefinitely on synchronous HTTP requests).',
+          'Compute `Math.random() * Math.min(maxDelayMs, baseMs * 2 ** attempt)` for full jitter.',
+          'Only retry `502`/`503`/`504`, `429`, and network timeouts — never retry `400`/`401`/`403`/`404`.',
+        ],
+        code: {
+          filename: 'shared/backoff.ts',
+          snippet: `export function fullJitterDelayMs(attempt: number, baseMs = 100, maxMs = 2000) {
+  const cap = Math.min(maxMs, baseMs * 2 ** attempt);
+  return Math.floor(Math.random() * cap);
+}`,
+        },
+      },
     },
     {
       title: 'Missing Deadline Propagation',
       symptom: 'Service A times out after 500ms and returns an error to the user, yet Service B and Service C keep running an expensive 10-second query nobody will ever read.',
       fix: 'Pass the remaining deadline budget (`x-deadline-ms` or gRPC deadline) down every hop and cancel work immediately once the budget expires.',
+      howToImplement: {
+        id: 'ms-deadline-prop',
+        label: 'Propagate Remaining Timeout Budget',
+        summary:
+          'Pass remaining milliseconds (not wall-clock timestamps, which can suffer clock skew) down each hop and cancel downstream HTTP + SQL work once expired.',
+        steps: [
+          'At the edge/BFF, start with a total budget (e.g., `500ms`) and track `startedAt = performance.now()`.',
+          'Before calling Service C, compute `remaining = budgetMs - (performance.now() - startedAt)`; if `remaining <= 20`, abort immediately without making the call.',
+          'Forward `x-timeout-ms: remaining` to `AbortSignal.timeout(remaining)` and set Postgres `SET LOCAL statement_timeout` so DB work stops too.',
+        ],
+        code: {
+          filename: 'service-b/src/callDownstream.ts',
+          snippet: `export async function callServiceC(reqBudgetMs: number, startedAt: number) {
+  const remaining = Math.floor(reqBudgetMs - (performance.now() - startedAt));
+  if (remaining <= 20) throw new Error('Deadline expired before calling Service C');
+
+  return fetch('http://service-c/query', {
+    headers: { 'x-timeout-ms': String(remaining) },
+    signal: AbortSignal.timeout(remaining),
+  });
+}`,
+        },
+      },
     },
   ],
   miniChecks: [
@@ -616,6 +828,28 @@ export async function getHomeFeed(userId: string) {
         '`orders-service` must NEVER open `catalog.db` — communicate strictly over HTTP.',
         'Propagate an `x-request-id` header from the Gateway to both services and log it on every request.',
       ],
+      starterHints: [
+        {
+          id: 'ms-p1-hint-idem',
+          label: 'Server-Side Idempotency Table (SQLite)',
+          summary:
+            'Store `idempotency_key TEXT UNIQUE` on your `orders` table (or a dedicated table) so duplicate `POST /orders` calls return the original order cleanly.',
+          steps: [
+            'Read `const key = req.headers["idempotency-key"]` and reject missing keys on `POST /orders` with `400`.',
+            'Use `INSERT INTO orders (id, idempotency_key, ...) VALUES (...) ON CONFLICT(idempotency_key) DO NOTHING` and fetch the existing row if `changes === 0`.',
+          ],
+        },
+        {
+          id: 'ms-p1-hint-trace',
+          label: 'Forwarding x-request-id',
+          summary:
+            'In the Gateway, generate `req.headers["x-request-id"] ?? crypto.randomUUID()` and pass it inside `fetch(..., { headers: { "x-request-id": id } })`.',
+          steps: [
+            'Echo `x-request-id` on the HTTP response header so curl/browser logs show it too.',
+            'Include `{ service, requestId, status }` in every `console.log(JSON.stringify(...))` line.',
+          ],
+        },
+      ],
     },
     {
       id: 'proj-ms-url-shortener',
@@ -656,6 +890,33 @@ export async function getHomeFeed(userId: string) {
       architectureRules: [
         'Run each service in its own process/container with independent `package.json` dependencies.',
         'Simulate a 2-second artificial delay in `analytics-service` and prove `redirect-service` latency stays unaffected.',
+      ],
+      starterHints: [
+        {
+          id: 'ms-p2-hint-cb',
+          label: 'Non-Blocking Click Tracking + Mini Circuit Breaker',
+          summary:
+            'Send the `302` redirect immediately and track clicks with a short 150ms timeout + failure counter that pauses outbound calls for 15 seconds after 3 timeouts.',
+          steps: [
+            'Send `res.redirect(302, targetUrl)` BEFORE awaiting analytics (or run `trackClick(slug).catch(...)` off the critical path).',
+            'Track `consecutiveFails` and `openUntil`; skip `fetch()` while `Date.now() < openUntil` and log `breaker_open`.',
+          ],
+          code: {
+            filename: 'redirect-service/src/trackClick.ts',
+            snippet: `let fails = 0, openUntil = 0;
+export async function trackClick(slug: string) {
+  if (Date.now() < openUntil) return console.log(JSON.stringify({ event: 'analytics_breaker_open', slug }));
+  try {
+    await fetch('http://localhost:3002/clicks', {
+      method: 'POST', body: JSON.stringify({ slug }), signal: AbortSignal.timeout(150),
+    });
+    fails = 0;
+  } catch {
+    if (++fails >= 3) openUntil = Date.now() + 15_000;
+  }
+}`,
+          },
+        },
       ],
     },
   ],

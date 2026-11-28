@@ -303,6 +303,32 @@ export async function completeTask(taskId: string, userId: string) {
             'Each listener handles its own errors independently. Note: for mission-critical work that must survive server crashes/restarts, persist these events in a job queue (BullMQ/pg-boss) instead of memory.',
         },
       ],
+      howToImplement: [
+        {
+          id: 'mm-isolated-event-bus',
+          label: 'Isolate Listener Errors in eventBus.ts',
+          summary:
+            'A standard Node `EventEmitter` can crash the process or skip other subscribers if one listener throws — wrap each handler with `Promise.allSettled`.',
+          steps: [
+            'Store listeners in a `Map<eventName, Handler[]>` inside `shared/domainEvents.ts`.',
+            'When `publish()` runs, execute every listener inside `Promise.allSettled(...)` so a bug in Slack notifications never breaks `completeTask()` or blocks Analytics.',
+            'Log any rejected listener with the event name and `correlationId` so failures never vanish silently.',
+          ],
+          code: {
+            filename: 'src/shared/domainEvents.ts',
+            snippet: `export async function publish(eventName: string, payload: unknown) {
+  const handlers = listeners.get(eventName) ?? [];
+  const results = await Promise.allSettled(handlers.map((fn) => fn(payload)));
+
+  results.forEach((res, idx) => {
+    if (res.status === 'rejected') {
+      logger.error({ eventName, handlerIdx: idx, err: res.reason }, 'Domain listener failed');
+    }
+  });
+}`,
+          },
+        },
+      ],
     },
     {
       id: 'mm-event-loop-blocking',
@@ -479,6 +505,29 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
       title: 'The "Big Ball of Mud" Drift',
       symptom: 'Developers take shortcuts under deadline pressure and import helpers/repositories across folders.',
       fix: 'Expose one `publicApi.ts` file per module and block deep cross-module imports in your linter.',
+      howToImplement: {
+        id: 'mm-eslint-boundaries',
+        label: 'Enforce Boundaries in ESLint',
+        summary:
+          'Configure `eslint-plugin-boundaries` (or `no-restricted-imports`) so CI fails the moment one module reaches past another module’s `publicApi.ts`.',
+        steps: [
+          'Keep every module’s public functions in `src/modules/<name>/publicApi.ts` and internal repos/helpers in sibling files.',
+          'Add a simple import restriction rule in `eslint.config.js` blocking deep imports into `../<other-module>/*` except `publicApi`.',
+          'Run ESLint in CI on every pull request so boundary drift is caught automatically.',
+        ],
+        code: {
+          filename: 'eslint.config.js',
+          snippet: `// Block importing any module's private files from outside that module
+rules: {
+  'no-restricted-imports': ['error', {
+    patterns: [{
+      group: ['../**/repo', '../**/repo.*', '../**/*Repo', '../**/internal/*'],
+      message: 'Import another module only through its publicApi.ts contract.',
+    }],
+  }],
+}`,
+        },
+      },
     },
     {
       title: 'Missing Tenant Isolation (Cross-Tenant Leaks & IDOR)',
@@ -509,6 +558,25 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
       title: 'Cross-Module Long Transactions & DB Locks',
       symptom: 'Wrapping calls across 4 modules inside one long database transaction triggers lock contention, slow checkouts, and random deadlocks.',
       fix: 'Keep SQL transactions small and scoped to one module’s tables; coordinate secondary side effects after commit via events or a job queue.',
+      howToImplement: {
+        id: 'mm-db-timeouts-indexes',
+        label: 'Guard Shared Postgres With Query Budgets',
+        summary:
+          'Protect healthy modules from one slow unindexed query or stuck transaction on the shared database.',
+        steps: [
+          'Set a default `statement_timeout` (e.g., `5000ms`) on your web DB pool so a runaway query cancels automatically instead of pinning connections.',
+          'Run `EXPLAIN ANALYZE` on any query over 100ms and add composite indexes matching your `WHERE` + `ORDER BY` columns (like `(org_id, created_at DESC)`).',
+          'Never make external HTTP calls (Stripe, Slack, email) inside an open `db.transaction()` — commit first, then enqueue the side effect.',
+        ],
+        code: {
+          filename: 'src/shared/db.ts',
+          snippet: `export const webPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20,
+  statement_timeout: 5_000, // kill runaway queries before they starve Billing
+});`,
+        },
+      },
     },
     {
       title: 'Premature Extraction to Microservices',
@@ -580,6 +648,30 @@ export async function requestOrgReport(orgId: string, requestedBy: string) {
       architectureRules: [
         'Never import another module’s `repo.ts` directly — only import from `publicApi.ts`.',
         'Prefix every table with its module name (`users_*`, `habits_*`, `streaks_*`) and forbid cross-module SQL JOINs.',
+      ],
+      starterHints: [
+        {
+          id: 'mm-proj-hint-bus',
+          label: 'Safe In-Process Event Bus',
+          summary:
+            'Use `Promise.allSettled` inside `eventBus.ts` so throwing an error in `streaks/listener.ts` logs cleanly without failing `POST /habits/:id/check-in`.',
+          steps: [
+            'Keep a `Map<string, Array<(payload: any) => Promise<void> | void>>` in `src/shared/eventBus.ts`.',
+            'Loop listeners with `Promise.allSettled` and log rejected outcomes with structured JSON.',
+          ],
+          code: {
+            filename: 'src/shared/eventBus.ts',
+            snippet: `const handlers = new Map<string, Array<(p: unknown) => unknown>>();
+export const eventBus = {
+  on: (event: string, fn: (p: unknown) => unknown) =>
+    handlers.set(event, [...(handlers.get(event) ?? []), fn]),
+  async emit(event: string, payload: unknown) {
+    const res = await Promise.allSettled((handlers.get(event) ?? []).map((fn) => fn(payload)));
+    res.filter((r) => r.status === 'rejected').forEach((r) => console.error(JSON.stringify({ event, err: String(r.reason) })));
+  },
+};`,
+          },
+        },
       ],
     },
     {
