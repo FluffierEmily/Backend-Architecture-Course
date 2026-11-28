@@ -54,16 +54,16 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
   const foundationsDone = progress.completedSections.includes('foundations');
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 sm:space-y-10">
       {/* Focused Single-CTA Header Card */}
-      <section className="rounded-2xl border border-stone-200 bg-white p-7 shadow-xs sm:p-9 dark:border-slate-700/80 dark:bg-[#162033]">
+      <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs sm:p-8 lg:p-9 dark:border-slate-700/80 dark:bg-[#162033]">
         <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
           Beginner-Friendly · Bite-Sized Steps · Zero Coding Exams
         </p>
-        <h1 className="mt-2 max-w-2xl text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl dark:text-white">
+        <h1 className="mt-2 max-w-2xl text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl dark:text-white">
           Learn How to Choose &amp; Design Backend Architectures
         </h1>
-        <p className="prose-measure mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
+        <p className="prose-measure mt-3 text-sm leading-7 text-slate-600 sm:text-base dark:text-slate-300">
           Master <strong>Modular Monoliths</strong>, <strong>Microservices</strong>,{' '}
           <strong>Serverless</strong>, and <strong>Event-Driven Architecture</strong> one calm chunk
           at a time — with visual flow diagrams, highlighted{' '}
@@ -74,12 +74,12 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
         </p>
 
         {/* Single Primary CTA + Quiet Secondary Links */}
-        <div className="mt-7 flex flex-wrap items-center gap-5">
+        <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5">
           <Link
             to={nextStep.to}
             onMouseEnter={() => prefetchRoute(nextStep.to)}
             onFocus={() => prefetchRoute(nextStep.to)}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto"
           >
             {nextStep.architectureId && (
               <ArchitectureIcon architectureId={nextStep.architectureId} className="h-4 w-4" />
@@ -88,25 +88,27 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
             <ArrowRight className="h-4 w-4" />
           </Link>
 
-          <Link
-            to="/simulator"
-            onMouseEnter={() => prefetchRoute('/simulator')}
-            onFocus={() => prefetchRoute('/simulator')}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
-          >
-            <Compass className="h-4 w-4" />
-            Try Decision Simulator
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 pt-1 sm:pt-0">
+            <Link
+              to="/simulator"
+              onMouseEnter={() => prefetchRoute('/simulator')}
+              onFocus={() => prefetchRoute('/simulator')}
+              className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
+            >
+              <Compass className="h-4 w-4" />
+              Try Decision Simulator
+            </Link>
 
-          <Link
-            to="/projects"
-            onMouseEnter={() => prefetchRoute('/projects')}
-            onFocus={() => prefetchRoute('/projects')}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
-          >
-            <FolderGit2 className="h-4 w-4" />
-            Browse {COURSE_COUNTS.practiceProjects} Practice Projects
-          </Link>
+            <Link
+              to="/projects"
+              onMouseEnter={() => prefetchRoute('/projects')}
+              onFocus={() => prefetchRoute('/projects')}
+              className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-slate-600 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-300"
+            >
+              <FolderGit2 className="h-4 w-4" />
+              Browse {COURSE_COUNTS.practiceProjects} Practice Projects
+            </Link>
+          </div>
         </div>
 
         <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">{nextStep.note}</p>
@@ -115,7 +117,9 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
       {/* Calm Course Roadmap */}
       <section className="space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Course Roadmap</h2>
+          <h2 className="text-lg font-extrabold text-slate-900 sm:text-xl dark:text-white">
+            Course Roadmap
+          </h2>
           <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
             {overallPercent}% complete
           </span>
@@ -126,14 +130,14 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
           to="/foundations"
           onMouseEnter={() => prefetchRoute('/foundations')}
           onFocus={() => prefetchRoute('/foundations')}
-          className="group flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-xs transition hover:border-indigo-500/50 dark:border-slate-700/80 dark:bg-[#162033] dark:hover:border-indigo-400/50"
+          className="group flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-xs transition hover:border-indigo-500/50 sm:gap-4 sm:p-5 dark:border-slate-700/80 dark:bg-[#162033] dark:hover:border-indigo-400/50"
         >
-          <div className="flex items-start gap-4">
-            <div className="mt-0.5 rounded-xl bg-indigo-500/15 p-2.5 text-indigo-600 dark:text-indigo-300">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="mt-0.5 shrink-0 rounded-xl bg-indigo-500/15 p-2.5 text-indigo-600 dark:text-indigo-300">
               <BookOpen className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                 <span>Module 0 · Foundations</span>
                 {foundationsDone && (
                   <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
@@ -165,9 +169,9 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
                 to={modPath}
                 onMouseEnter={() => prefetchRoute(modPath)}
                 onFocus={() => prefetchRoute(modPath)}
-                className={`group flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-6 shadow-xs transition dark:border-slate-700/80 dark:bg-[#162033] ${visual.hoverBorder}`}
+                className={`group flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-5 shadow-xs transition sm:p-6 dark:border-slate-700/80 dark:bg-[#162033] ${visual.hoverBorder}`}
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3.5 sm:gap-4">
                   <ArchitectureIconBadge architectureId={mod.id} size="md" className="mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2 text-xs font-semibold">
@@ -202,8 +206,14 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
         </div>
 
         <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-          Tip: Hover or click the left edge of the screen anytime to open navigation, or toggle{' '}
-          <strong>Calm Motion</strong> inside the sidebar.
+          <span className="lg:hidden">
+            Tip: Tap the menu button in the top bar anytime to jump between modules or toggle{' '}
+            <strong>Calm Motion</strong>.
+          </span>
+          <span className="hidden lg:inline">
+            Tip: Hover or click the left edge of the screen anytime to open navigation, or toggle{' '}
+            <strong>Calm Motion</strong> inside the sidebar.
+          </span>
         </p>
       </section>
     </div>

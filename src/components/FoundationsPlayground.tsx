@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -83,6 +83,7 @@ export function FoundationsPlayground({
     isStringArray
   );
   const [jumpOpen, setJumpOpen] = useState(false);
+  const jumpRef = useRef<HTMLDivElement | null>(null);
   const [trafficSpike, setTrafficSpike] = useState(false);
   const [activeLab, setActiveLab] = usePersistedState<'spike' | 'breaker' | 'reliability'>(
     'foundations.activeLab',
@@ -102,20 +103,38 @@ export function FoundationsPlayground({
     }
   };
 
+  useEffect(() => {
+    if (!jumpOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (jumpRef.current && !jumpRef.current.contains(e.target as Node)) {
+        setJumpOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setJumpOpen(false);
+    };
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [jumpOpen]);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* PART 1: Single Calm Lesson Card (No 8-pill wall above it) */}
       {(section === 'blocks' || section === 'both') && (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+        <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
           {/* Slim Progress Bar + Quiet Controls */}
-          <div className="mb-6 space-y-3">
+          <div className="mb-5 space-y-3 sm:mb-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="relative">
+              <div ref={jumpRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setJumpOpen((o) => !o)}
                   aria-expanded={jumpOpen}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <span>
                     Block {activeIndex + 1} of {FOUNDATION_BLOCKS.length}
@@ -124,7 +143,7 @@ export function FoundationsPlayground({
                 </button>
 
                 {jumpOpen && (
-                  <div className="absolute left-0 z-20 mt-1.5 max-h-80 w-80 overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
+                  <div className="absolute left-0 z-20 mt-1.5 max-h-80 w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
                     {FOUNDATION_BLOCKS.map((block, index) => {
                       const isCurrent = index === activeIndex;
                       const isVisited = visitedIds.includes(block.id);
@@ -133,7 +152,7 @@ export function FoundationsPlayground({
                           key={block.id}
                           type="button"
                           onClick={() => selectBlock(index)}
-                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition ${
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition ${
                             isCurrent
                               ? 'bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
                               : 'text-slate-700 hover:bg-stone-100 dark:text-slate-300 dark:hover:bg-slate-800'
@@ -158,7 +177,7 @@ export function FoundationsPlayground({
                   disabled={activeIndex === 0}
                   onClick={() => selectBlock(Math.max(0, activeIndex - 1))}
                   aria-label="Previous foundation block"
-                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -169,7 +188,7 @@ export function FoundationsPlayground({
                     selectBlock(Math.min(FOUNDATION_BLOCKS.length - 1, activeIndex + 1))
                   }
                   aria-label="Next foundation block"
-                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -202,12 +221,12 @@ export function FoundationsPlayground({
           </div>
 
           {/* Lesson Heading */}
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-500/15 p-2.5 text-indigo-600 dark:text-indigo-300">
+          <div className="flex items-start gap-3 sm:items-center">
+            <div className="shrink-0 rounded-xl bg-indigo-500/15 p-2.5 text-indigo-600 dark:text-indigo-300">
               <ActiveIcon className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl dark:text-white">
                 <CourseText text={activeBlock.name} />
               </h2>
             </div>
@@ -259,7 +278,7 @@ export function FoundationsPlayground({
           </div>
 
           {/* Single Primary Action Footer */}
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-stone-200 pt-5 dark:border-slate-700/80">
+          <div className="mt-7 flex flex-col gap-4 border-t border-stone-200 pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between dark:border-slate-700/80">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span>Used in:</span>
               {activeBlock.relevantArchitectures.map((archId) => {
@@ -268,7 +287,7 @@ export function FoundationsPlayground({
                   <Link
                     key={archId}
                     to={`/modules/${archId}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 font-medium text-slate-700 transition hover:border-indigo-400/60 hover:text-indigo-600 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300 dark:hover:border-indigo-400/50 dark:hover:text-indigo-300"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-medium text-slate-700 transition hover:border-indigo-400/60 hover:text-indigo-600 sm:py-1 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300 dark:hover:border-indigo-400/50 dark:hover:text-indigo-300"
                   >
                     <ArchitectureIcon architectureId={archId} className="h-3.5 w-3.5" colored />
                     {mod.shortName}
@@ -281,19 +300,21 @@ export function FoundationsPlayground({
               <button
                 type="button"
                 onClick={() => selectBlock(activeIndex + 1)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto"
               >
-                Next: {FOUNDATION_BLOCKS[activeIndex + 1].name.split(' (')[0]}
-                <ChevronRight className="h-4 w-4" />
+                <span className="truncate">
+                  Next: {FOUNDATION_BLOCKS[activeIndex + 1].name.split(' (')[0]}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0" />
               </button>
             ) : onFinishBlocks ? (
               <button
                 type="button"
                 onClick={onFinishBlocks}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto"
               >
                 Continue to Interactive Labs
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 shrink-0" />
               </button>
             ) : null}
           </div>
@@ -303,7 +324,11 @@ export function FoundationsPlayground({
       {/* PART 2: Interactive Mini-Labs (1 calm lab at a time via clean switcher) */}
       {(section === 'lab' || section === 'both') && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Interactive labs">
+          <div
+            className="no-scrollbar flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:pb-0"
+            role="tablist"
+            aria-label="Interactive labs"
+          >
             {(
               [
                 { id: 'spike', label: 'Lab 1 · Traffic Spike (Sync vs. Queue)' },
@@ -317,7 +342,7 @@ export function FoundationsPlayground({
                 role="tab"
                 aria-selected={activeLab === tab.id}
                 onClick={() => setActiveLab(tab.id)}
-                className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition ${
+                className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-xs font-semibold transition sm:py-2 ${
                   activeLab === tab.id
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-stone-100 text-slate-700 hover:bg-stone-200 dark:bg-[#162033] dark:text-slate-300 dark:hover:bg-slate-800'
@@ -328,7 +353,7 @@ export function FoundationsPlayground({
             ))}
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
             {activeLab === 'spike' && (
               <>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -336,7 +361,7 @@ export function FoundationsPlayground({
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                       Interactive Mini-Lab
                     </span>
-                    <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+                    <h2 className="mt-1 text-lg font-extrabold text-slate-900 sm:text-xl dark:text-white">
                       Why Queues &amp; Async Matter During Traffic Spikes
                     </h2>
                     <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -346,7 +371,7 @@ export function FoundationsPlayground({
                   <button
                     type="button"
                     onClick={() => setTrafficSpike((prev) => !prev)}
-                    className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition ${
+                    className={`w-full shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition sm:w-auto ${
                       trafficSpike
                         ? 'bg-emerald-600 hover:bg-emerald-500'
                         : 'bg-indigo-600 hover:bg-indigo-500'
@@ -358,16 +383,16 @@ export function FoundationsPlayground({
                   </button>
                 </div>
 
-                <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <div className="mt-6 grid gap-4 md:grid-cols-2 md:gap-5">
                   {/* Direct Sync */}
                   <div
-                    className={`rounded-2xl border p-5 transition ${
+                    className={`rounded-2xl border p-4 transition sm:p-5 ${
                       trafficSpike
                         ? 'border-rose-500/40 bg-rose-500/10'
                         : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         1. Direct Synchronous Server
                       </span>
@@ -383,11 +408,11 @@ export function FoundationsPlayground({
                     </div>
 
                     <div className="mt-4 space-y-2.5 text-xs">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between gap-2">
                         <span className="text-slate-600 dark:text-slate-400">
                           <CourseText text="Server CPU & Memory" />
                         </span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        <span className="text-right font-mono font-bold text-slate-900 dark:text-white">
                           {trafficSpike ? '100% Saturated' : '32%'}
                         </span>
                       </div>
@@ -398,9 +423,9 @@ export function FoundationsPlayground({
                           }`}
                         />
                       </div>
-                      <div className="flex justify-between pt-1">
+                      <div className="flex justify-between gap-2 pt-1">
                         <span className="text-slate-600 dark:text-slate-400">Dropped Requests</span>
-                        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                        <span className="text-right font-mono font-bold text-rose-600 dark:text-rose-400">
                           {trafficSpike ? '140 req/sec failed (504 Timeout)' : '0'}
                         </span>
                       </div>
@@ -418,13 +443,13 @@ export function FoundationsPlayground({
 
                   {/* Queue Buffered */}
                   <div
-                    className={`rounded-2xl border p-5 transition ${
+                    className={`rounded-2xl border p-4 transition sm:p-5 ${
                       trafficSpike
                         ? 'border-emerald-500/40 bg-emerald-500/10'
                         : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         2. Queue-Buffered Async Workers
                       </span>
@@ -434,11 +459,11 @@ export function FoundationsPlayground({
                     </div>
 
                     <div className="mt-4 space-y-2.5 text-xs">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between gap-2">
                         <span className="text-slate-600 dark:text-slate-400">
                           Queue Buffer Depth
                         </span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        <span className="text-right font-mono font-bold text-slate-900 dark:text-white">
                           {trafficSpike ? '160 jobs safely queued' : '0 jobs queued'}
                         </span>
                       </div>
@@ -449,9 +474,9 @@ export function FoundationsPlayground({
                           }`}
                         />
                       </div>
-                      <div className="flex justify-between pt-1">
+                      <div className="flex justify-between gap-2 pt-1">
                         <span className="text-slate-600 dark:text-slate-400">Dropped Requests</span>
-                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                           0 (all replied 202 Accepted)
                         </span>
                       </div>

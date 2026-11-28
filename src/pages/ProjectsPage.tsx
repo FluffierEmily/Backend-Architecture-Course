@@ -59,8 +59,8 @@ export function ProjectsPage({
   );
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-5">
+    <div className="space-y-6 sm:space-y-8">
+      <header className="space-y-4 sm:space-y-5">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
             <span className="text-indigo-600 dark:text-indigo-400">
@@ -70,24 +70,27 @@ export function ProjectsPage({
               {doneMilestones} / {TOTAL_MILESTONES} Milestones Checked
             </span>
           </div>
-          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
             Practice Projects Gallery
           </h1>
-          <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
+          <p className="prose-measure mt-2 text-sm leading-7 text-slate-600 sm:text-base dark:text-slate-300">
             Simple, realistic projects to build locally on your own time — each with checkable
             milestones, a suggested folder layout, and a one-click Markdown brief.
           </p>
         </div>
 
         {/* Single Quiet Underline Tab Bar + Inline Level Filter */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 dark:border-slate-700/80">
-          <div className="-mb-px flex flex-wrap gap-x-5 gap-y-2" role="tablist">
+        <div className="flex flex-col gap-2 border-b border-stone-200 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-slate-700/80">
+          <div
+            className="no-scrollbar -mb-px flex w-full flex-nowrap gap-5 overflow-x-auto sm:w-auto sm:flex-wrap sm:gap-x-5 sm:gap-y-2"
+            role="tablist"
+          >
             <button
               type="button"
               role="tab"
               aria-selected={archFilter === 'all'}
               onClick={() => setArchFilter('all')}
-              className={`border-b-2 pb-3 text-sm font-semibold transition ${archFilter === 'all'
+              className={`shrink-0 whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition sm:pt-0 sm:pb-3 ${archFilter === 'all'
                   ? 'border-indigo-500 text-slate-900 dark:text-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
@@ -103,7 +106,7 @@ export function ProjectsPage({
                   role="tab"
                   aria-selected={isSelected}
                   onClick={() => setArchFilter(m.id)}
-                  className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${isSelected
+                  className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition sm:pt-0 sm:pb-3 ${isSelected
                       ? 'border-indigo-500 text-slate-900 dark:text-white'
                       : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     }`}
@@ -118,7 +121,7 @@ export function ProjectsPage({
               role="tab"
               aria-selected={archFilter === 'hybrid'}
               onClick={() => setArchFilter('hybrid')}
-              className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition ${archFilter === 'hybrid'
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition sm:pt-0 sm:pb-3 ${archFilter === 'hybrid'
                   ? 'border-indigo-500 text-slate-900 dark:text-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
@@ -128,14 +131,14 @@ export function ProjectsPage({
             </button>
           </div>
 
-          <div className="flex items-center gap-3 pb-3 text-xs">
+          <div className="flex items-center gap-2 pb-2.5 text-xs sm:gap-3 sm:pb-3">
             <span className="text-slate-400 dark:text-slate-500">Level:</span>
             {(['all', 'starter', 'stretch'] as const).map((diff) => (
               <button
                 key={diff}
                 type="button"
                 onClick={() => setDifficultyFilter(diff)}
-                className={`font-semibold capitalize transition ${difficultyFilter === diff
+                className={`px-1 py-1 font-semibold capitalize transition sm:px-0 sm:py-0 ${difficultyFilter === diff
                     ? 'text-indigo-600 underline decoration-indigo-500 underline-offset-4 dark:text-indigo-300'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}

@@ -149,7 +149,7 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
   };
 
   return (
-    <div className="flex flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
+    <div className="flex flex-col rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Quiet Eyebrow + Copy Action */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex flex-wrap items-center gap-1.5 font-semibold">
@@ -233,7 +233,7 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
                 key={m.id}
                 type="button"
                 onClick={() => onToggleMilestone(m.id)}
-                className="flex w-full items-start gap-2.5 rounded-xl p-2 text-left transition hover:bg-stone-50 dark:hover:bg-[#0f172a]/70"
+                className="flex w-full items-start gap-2.5 rounded-xl p-2.5 text-left transition hover:bg-stone-50 sm:p-2 dark:hover:bg-[#0f172a]/70"
               >
                 {isChecked ? (
                   <CheckSquare className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
@@ -262,11 +262,11 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
 
       {/* Progressive Disclosure Footer: Folder Layout & Key Rules on demand */}
       <div className="mt-auto border-t border-stone-200 pt-4 dark:border-slate-700/80">
-        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold">
           <button
             type="button"
             onClick={() => setOpenDrawer((d) => (d === 'folder' ? 'none' : 'folder'))}
-            className={`inline-flex items-center gap-1.5 transition ${
+            className={`inline-flex items-center gap-1.5 py-1 transition sm:py-0 ${
               openDrawer === 'folder'
                 ? 'text-indigo-600 dark:text-indigo-300'
                 : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300'
@@ -279,7 +279,7 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
           <button
             type="button"
             onClick={() => setOpenDrawer((d) => (d === 'rules' ? 'none' : 'rules'))}
-            className={`inline-flex items-center gap-1.5 transition ${
+            className={`inline-flex items-center gap-1.5 py-1 transition sm:py-0 ${
               openDrawer === 'rules'
                 ? 'text-amber-600 dark:text-amber-300'
                 : 'text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-300'
@@ -295,7 +295,7 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
             <button
               type="button"
               onClick={() => setOpenDrawer((d) => (d === 'hints' ? 'none' : 'hints'))}
-              className={`inline-flex items-center gap-1.5 transition ${
+              className={`inline-flex items-center gap-1.5 py-1 transition sm:py-0 ${
                 openDrawer === 'hints'
                   ? 'text-emerald-600 dark:text-emerald-300'
                   : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-300'
@@ -310,7 +310,7 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
         </div>
 
         {openDrawer === 'folder' && (
-          <pre className="mt-3 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3.5 font-mono text-xs leading-6 text-slate-200">
+          <pre className="mt-3 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3 font-mono text-[11px] leading-6 text-slate-200 sm:p-3.5 sm:text-xs">
             {project.folderStructure}
           </pre>
         )}

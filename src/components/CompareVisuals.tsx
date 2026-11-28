@@ -4,17 +4,22 @@ import { ArchitectureIcon, ArchitectureIconGlyph } from './ArchitectureIcon';
 
 export const ArchitectureDecisionFlowchart = memo(function ArchitectureDecisionFlowchart() {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
-      <div className="mb-4">
-        <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-          Quick Mental Map
-        </p>
-        <h2 className="mt-0.5 text-lg font-extrabold text-slate-900 dark:text-white">
-          Which Architecture Should You Start With?
-        </h2>
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2 sm:mb-4">
+        <div>
+          <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            Quick Mental Map
+          </p>
+          <h2 className="mt-0.5 text-lg font-extrabold text-slate-900 dark:text-white">
+            Which Architecture Should You Start With?
+          </h2>
+        </div>
+        <span className="text-[11px] font-medium text-slate-500 sm:hidden dark:text-slate-400">
+          Swipe diagram ↔
+        </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-4">
+      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3 sm:p-4">
         <svg
           viewBox="0 0 760 250"
           className="h-auto w-full min-w-[560px]"
@@ -140,7 +145,10 @@ export const ArchitectureDecisionFlowchart = memo(function ArchitectureDecisionF
 
 export const StranglerFigDiagram = memo(function StranglerFigDiagram() {
   return (
-    <figure className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1120] p-4">
+    <figure className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1120] p-3 sm:p-4">
+      <div className="mb-1.5 flex items-center justify-end px-1 text-[10px] font-medium text-slate-400 sm:hidden">
+        Swipe diagram ↔
+      </div>
       <div className="overflow-x-auto">
         <svg
           viewBox="0 0 740 190"

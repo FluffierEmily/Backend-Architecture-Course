@@ -69,6 +69,15 @@ export function TermDrawer() {
   const drawer = activeTerm?.drawer;
   const cat = activeTerm ? CATEGORY_META[activeTerm.category] : CATEGORY_META.general;
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
   const relatedEntries = (drawer?.relatedTerms ?? [])
     .map((id) => ABBREVIATION_BY_ID[id])
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry?.drawer));
@@ -104,16 +113,21 @@ export function TermDrawer() {
         aria-modal="true"
         aria-label={activeTerm ? `${activeTerm.term} — ${activeTerm.fullName}` : 'Term guide'}
         aria-hidden={!isOpen}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-stone-200 bg-white shadow-2xl transition-[transform,opacity,visibility] duration-200 ease-out dark:border-slate-800 dark:bg-[#0c1322] ${
+        className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] w-full flex-col rounded-t-2xl border-t border-stone-200 bg-white shadow-2xl transition-[transform,opacity,visibility] duration-200 ease-out sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:max-w-md sm:rounded-none sm:border-t-0 sm:border-l dark:border-slate-800 dark:bg-[#0c1322] ${
           isOpen
-            ? 'visible translate-x-0 opacity-100'
-            : 'invisible pointer-events-none translate-x-full opacity-0'
+            ? 'visible translate-y-0 opacity-100 sm:translate-x-0'
+            : 'invisible pointer-events-none translate-y-full opacity-0 sm:translate-y-0 sm:translate-x-full'
         }`}
       >
         {activeTerm && drawer && (
           <>
+            {/* Mobile Sheet Handle */}
+            <div className="flex justify-center pt-2.5 pb-0.5 sm:hidden" aria-hidden="true">
+              <span className="h-1 w-10 rounded-full bg-stone-300 dark:bg-slate-700" />
+            </div>
+
             {/* Drawer Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-stone-200 px-5 py-5 dark:border-slate-800">
+            <div className="flex items-start justify-between gap-3 border-b border-stone-200 px-4 py-3.5 sm:px-5 sm:py-5 dark:border-slate-800">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${cat.pillClass}`}>
@@ -123,7 +137,7 @@ export function TermDrawer() {
                     <button
                       type="button"
                       onClick={goBack}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
+                      className="inline-flex items-center gap-1 py-0.5 text-xs font-semibold text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
                       Back to {previousTerm.term}
@@ -131,7 +145,7 @@ export function TermDrawer() {
                   )}
                 </div>
 
-                <h2 className="mt-2 font-mono text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                <h2 className="mt-1.5 font-mono text-xl font-extrabold tracking-tight text-slate-900 sm:mt-2 sm:text-2xl dark:text-white">
                   {activeTerm.term}
                 </h2>
                 <p className="mt-0.5 text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -144,14 +158,14 @@ export function TermDrawer() {
                 type="button"
                 onClick={closeTerm}
                 aria-label="Close term explanation drawer"
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Calm Scrollable Body */}
-            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+            <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
               {/* Plain English Summary */}
               <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.07] p-4">
                 <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
@@ -240,13 +254,13 @@ export function TermDrawer() {
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Related Terms
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {relatedEntries.map((rel) => (
                       <button
                         key={rel.id}
                         type="button"
                         onClick={() => openTerm(rel.id)}
-                        className="rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-indigo-400/60 hover:bg-indigo-500/10 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:border-indigo-400/50 dark:hover:text-indigo-300"
+                        className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-400/60 hover:bg-indigo-500/10 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:border-indigo-400/50 dark:hover:text-indigo-300"
                       >
                         <span className="font-mono">{rel.term}</span>
                         <span className="ml-1.5 font-normal text-slate-400 dark:text-slate-500">
@@ -260,8 +274,15 @@ export function TermDrawer() {
             </div>
 
             {/* Quiet Footer Tip */}
-            <div className="border-t border-stone-200 px-5 py-3 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
-              Press <kbd className="rounded border border-stone-300 px-1 py-0.5 font-mono text-[10px] dark:border-slate-700">Esc</kbd> or click outside to return to your place.
+            <div className="border-t border-stone-200 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] text-slate-500 sm:px-5 dark:border-slate-800 dark:text-slate-400">
+              <span className="sm:hidden">Tap outside or press × to return to your place.</span>
+              <span className="hidden sm:inline">
+                Press{' '}
+                <kbd className="rounded border border-stone-300 px-1 py-0.5 font-mono text-[10px] dark:border-slate-700">
+                  Esc
+                </kbd>{' '}
+                or click outside to return to your place.
+              </span>
             </div>
           </>
         )}

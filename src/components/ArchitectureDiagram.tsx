@@ -42,7 +42,7 @@ export function ArchitectureDiagram({
   const selectedNode = nodeMap.get(selectedNodeId) ?? data.nodes[0];
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Top Controls */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -52,35 +52,35 @@ export function ArchitectureDiagram({
               Interactive Architecture Flow
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Click any box to inspect its role, or toggle a failure / traffic spike.
+              Tap any box to inspect its role, or toggle a failure / traffic spike.
             </p>
           </div>
         </div>
 
-        <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-[#0f172a]">
+        <div className="grid grid-cols-2 rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold sm:inline-flex dark:border-slate-700 dark:bg-[#0f172a]">
           <button
             type="button"
             onClick={() => setFailureMode(false)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 transition sm:px-3 sm:py-1.5 ${
               !failureMode
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
             }`}
           >
-            <Activity className="h-3.5 w-3.5" />
-            Normal Flow
+            <Activity className="h-3.5 w-3.5 shrink-0" />
+            <span>Normal Flow</span>
           </button>
           <button
             type="button"
             onClick={() => setFailureMode(true)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 transition sm:px-3 sm:py-1.5 ${
               failureMode
                 ? 'bg-rose-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
             }`}
           >
-            <AlertOctagon className="h-3.5 w-3.5" />
-            Simulate Failure / Spike
+            <AlertOctagon className="h-3.5 w-3.5 shrink-0" />
+            <span>Simulate Failure / Spike</span>
           </button>
         </div>
       </div>
@@ -110,8 +110,12 @@ export function ArchitectureDiagram({
       </div>
 
       {/* Diagram + Inspector Grid */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3 lg:col-span-2">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
+        <div className="space-y-2 lg:col-span-2">
+          <p className="px-0.5 text-[11px] font-medium text-slate-500 sm:hidden dark:text-slate-400">
+            Swipe diagram ↔ or pick a component below
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-2.5 sm:p-3">
           <svg
             viewBox="0 0 800 340"
             className="h-auto w-full min-w-[540px]"
@@ -304,7 +308,7 @@ export function ArchitectureDiagram({
           </svg>
 
           {/* Legend */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-4 px-2 text-[11px] text-slate-400">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-2 text-[11px] text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-5 bg-slate-400" /> Sync call
             </span>
@@ -325,11 +329,36 @@ export function ArchitectureDiagram({
               </>
             )}
           </div>
+          </div>
+
+          {/* Mobile & Tablet Quick Component Picker */}
+          <div
+            className="no-scrollbar flex gap-2 overflow-x-auto pt-1 lg:hidden"
+            aria-label="Inspect architecture component"
+          >
+            {data.nodes.map((node) => {
+              const isSelected = node.id === selectedNode?.id;
+              return (
+                <button
+                  key={node.id}
+                  type="button"
+                  onClick={() => setSelectedNodeId(node.id)}
+                  className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
+                      : 'border-stone-200 bg-stone-50 text-slate-700 hover:bg-stone-100 dark:border-slate-700 dark:bg-[#0f172a] dark:text-slate-300'
+                  }`}
+                >
+                  {node.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Calm Component Inspector */}
         {selectedNode && (
-          <div className="flex flex-col justify-between rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+          <div className="flex flex-col justify-between rounded-xl border border-stone-200 bg-stone-50 p-4 sm:p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
             <div>
               <div className="flex items-center justify-between gap-2 text-xs">
                 <span className="font-semibold text-indigo-600 dark:text-indigo-400">
@@ -377,7 +406,7 @@ export function ArchitectureDiagram({
             </div>
 
             <p className="mt-4 text-[11px] text-slate-500 dark:text-slate-400">
-              Click any other box on the diagram to inspect it.
+              Tap any other box on the diagram to inspect it.
             </p>
           </div>
         )}

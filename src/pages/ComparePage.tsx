@@ -294,19 +294,19 @@ const SizingEstimator = memo(function SizingEstimator() {
         : 'High sustained throughput! Plan for caching/CDN layers, read replicas or specialized stores, event-driven buffering for bursts, and independent scaling of hot services.';
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
       <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
         Quantify Before You Architect
       </p>
-      <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+      <h2 className="mt-1 text-lg font-extrabold text-slate-900 sm:text-xl dark:text-white">
         5-Minute Back-of-the-Envelope Sizing Estimator
       </h2>
       <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
         <CourseText text="Before choosing distributed infrastructure, estimate your actual QPS, burstiness, and daily egress — most teams overestimate traffic by 10x." />
       </p>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        <div className="space-y-4 rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+      <div className="mt-5 grid gap-4 sm:mt-6 sm:gap-5 lg:grid-cols-2">
+        <div className="space-y-4 rounded-xl border border-stone-200 bg-stone-50 p-4 sm:p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
           <div>
             <div className="flex justify-between text-xs font-semibold">
               <label htmlFor="dau-slider" className="text-slate-700 dark:text-slate-200">
@@ -469,13 +469,13 @@ const AdrTemplateCard = memo(function AdrTemplateCard() {
   };
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             Communicating Trade-Offs
           </p>
-          <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+          <h2 className="mt-1 text-lg font-extrabold text-slate-900 sm:text-xl dark:text-white">
             <CourseText text="Lightweight Architecture Decision Record (ADR) Template" interactive={false} />
           </h2>
           <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -487,7 +487,7 @@ const AdrTemplateCard = memo(function AdrTemplateCard() {
         <button
           type="button"
           onClick={handleCopyAdr}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto sm:py-2"
         >
           {adrCopied ? (
             <>
@@ -503,7 +503,7 @@ const AdrTemplateCard = memo(function AdrTemplateCard() {
         </button>
       </div>
 
-      <pre className="mt-5 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-4 font-mono text-xs leading-6 text-slate-200">
+      <pre className="mt-5 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3.5 font-mono text-[11px] leading-6 text-slate-200 sm:p-4 sm:text-xs">
         {ADR_TEMPLATE_MD}
       </pre>
     </div>
@@ -544,25 +544,28 @@ export function ComparePage() {
   };
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-5">
+    <div className="space-y-6 sm:space-y-8">
+      <header className="space-y-4 sm:space-y-5">
         <div>
           <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
             Cheat Sheet &amp; Matrix
           </p>
-          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
             Compare All 4 Backend Architectures
           </h1>
-          <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
+          <p className="prose-measure mt-2 text-sm leading-7 text-slate-600 sm:text-base dark:text-slate-300">
             Pick your primary constraint to highlight the best matches, explore real-world hybrids,
             and build order-of-magnitude cost intuition.
           </p>
         </div>
 
         {/* Quiet Underline Tab Bar + Subtle View Toggle */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 dark:border-slate-700/80">
+        <div className="flex flex-col gap-2 border-b border-stone-200 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-slate-700/80">
           {viewMode === 'guided' ? (
-            <div className="-mb-px flex flex-wrap gap-6" role="tablist">
+            <div
+              className="no-scrollbar -mb-px flex w-full flex-nowrap gap-5 overflow-x-auto sm:w-auto sm:flex-wrap sm:gap-6"
+              role="tablist"
+            >
               {COMPARE_STEPS.map((step, i) => {
                 const isActive = i === stepIdx;
                 return (
@@ -572,7 +575,7 @@ export function ComparePage() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setStepIdx(i)}
-                    className={`border-b-2 pb-3 text-sm font-semibold transition ${isActive
+                    className={`shrink-0 whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition sm:pt-0 sm:pb-3 ${isActive
                       ? 'border-indigo-500 text-slate-900 dark:text-white'
                       : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
@@ -583,7 +586,7 @@ export function ComparePage() {
               })}
             </div>
           ) : (
-            <span className="pb-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="pb-2 text-xs font-medium text-slate-500 sm:pb-3 dark:text-slate-400">
               Showing all {COMPARE_STEPS.length} sections on one page
             </span>
           )}
@@ -593,7 +596,7 @@ export function ComparePage() {
             onClick={() =>
               startTransition(() => setViewMode((m) => (m === 'guided' ? 'all' : 'guided')))
             }
-            className="pb-3 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
+            className="self-start pb-2.5 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 sm:self-auto sm:pb-3 dark:text-slate-400 dark:hover:text-indigo-300"
           >
             {viewMode === 'guided' ? 'All Sections' : 'Back to Guided Tabs'}
           </button>
@@ -604,7 +607,7 @@ export function ComparePage() {
       {isVisible('matrix') && (
         <section className="space-y-5">
           {/* Calm Priority Highlighter */}
-          <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Highlight by Primary Constraint
             </p>
@@ -614,7 +617,7 @@ export function ComparePage() {
                   key={filter.id}
                   type="button"
                   onClick={() => setActivePriority(filter.id)}
-                  className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition ${activePriority === filter.id
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition sm:px-3.5 ${activePriority === filter.id
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-stone-100 text-slate-700 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
                     }`}
@@ -629,72 +632,77 @@ export function ComparePage() {
           </div>
 
           {/* Comparison Table */}
-          <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
-            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-stone-200 dark:border-slate-700/80">
-                  <th className="w-44 p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Dimension
-                  </th>
-                  {ARCHITECTURE_MODULES.map((mod) => {
-                    const isHighlighted = currentFilter.recommended.includes(mod.id);
-                    const isDimmed =
-                      currentFilter.recommended.length > 0 && !isHighlighted;
-                    return (
-                      <th
-                        key={mod.id}
-                        className={`p-4 transition ${isHighlighted
-                          ? 'bg-indigo-500/10'
-                          : isDimmed
-                            ? 'opacity-40'
-                            : ''
-                          }`}
-                      >
-                        <Link
-                          to={`/modules/${mod.id}`}
-                          className="inline-flex items-center gap-2 text-sm font-extrabold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
-                        >
-                          <ArchitectureIconBadge architectureId={mod.id} size="xs" />
-                          <span>{mod.shortName}</span>
-                        </Link>
-                        {isHighlighted && (
-                          <span className="mt-1 block text-[11px] font-bold text-indigo-600 dark:text-indigo-300">
-                            ★ Strong Match
-                          </span>
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-200 dark:divide-slate-700/70">
-                {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.label}>
-                    <td className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {row.label}
-                    </td>
+          <div className="space-y-1.5">
+            <p className="px-1 text-[11px] font-medium text-slate-500 md:hidden dark:text-slate-400">
+              Swipe horizontally to compare all 4 architectures ↔
+            </p>
+            <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
+              <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-stone-200 dark:border-slate-700/80">
+                    <th className="sticky left-0 z-10 w-28 bg-white p-3 text-xs font-bold uppercase tracking-wider text-slate-500 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] sm:w-44 sm:p-4 dark:bg-[#162033] dark:text-slate-400 dark:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.45)]">
+                      Dimension
+                    </th>
                     {ARCHITECTURE_MODULES.map((mod) => {
                       const isHighlighted = currentFilter.recommended.includes(mod.id);
                       const isDimmed =
                         currentFilter.recommended.length > 0 && !isHighlighted;
                       return (
-                        <td
+                        <th
                           key={mod.id}
-                          className={`p-4 align-top text-[13px] leading-6 text-slate-700 transition dark:text-slate-200 ${isHighlighted
-                            ? 'bg-indigo-500/[0.06] font-medium'
+                          className={`p-3 transition sm:p-4 ${isHighlighted
+                            ? 'bg-indigo-500/10'
                             : isDimmed
                               ? 'opacity-40'
                               : ''
                             }`}
                         >
-                          <CourseText text={row.render(mod)} />
-                        </td>
+                          <Link
+                            to={`/modules/${mod.id}`}
+                            className="inline-flex items-center gap-2 text-sm font-extrabold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
+                          >
+                            <ArchitectureIconBadge architectureId={mod.id} size="xs" />
+                            <span>{mod.shortName}</span>
+                          </Link>
+                          {isHighlighted && (
+                            <span className="mt-1 block text-[11px] font-bold text-indigo-600 dark:text-indigo-300">
+                              ★ Strong Match
+                            </span>
+                          )}
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-stone-200 dark:divide-slate-700/70">
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr key={row.label}>
+                      <td className="sticky left-0 z-10 bg-white p-3 text-xs font-semibold text-slate-500 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] sm:p-4 dark:bg-[#162033] dark:text-slate-400 dark:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.45)]">
+                        {row.label}
+                      </td>
+                      {ARCHITECTURE_MODULES.map((mod) => {
+                        const isHighlighted = currentFilter.recommended.includes(mod.id);
+                        const isDimmed =
+                          currentFilter.recommended.length > 0 && !isHighlighted;
+                        return (
+                          <td
+                            key={mod.id}
+                            className={`p-3 align-top text-[13px] leading-6 text-slate-700 transition sm:p-4 dark:text-slate-200 ${isHighlighted
+                              ? 'bg-indigo-500/[0.06] font-medium'
+                              : isDimmed
+                                ? 'opacity-40'
+                                : ''
+                              }`}
+                          >
+                            <CourseText text={row.render(mod)} />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <ArchitectureDecisionFlowchart />
@@ -743,7 +751,7 @@ export function ComparePage() {
           </div>
 
           {/* Strangler Fig Pattern Card */}
-          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-7 dark:border-slate-700/80 dark:bg-[#162033]">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-7 dark:border-slate-700/80 dark:bg-[#162033]">
             <div className="flex items-start gap-3">
               <ArchitectureIconBadge architectureId="hybrid" size="md" className="mt-0.5" />
               <div>
@@ -804,22 +812,22 @@ export function ComparePage() {
       {/* STEP 3: Order-of-Magnitude Cost Intuition */}
       {isVisible('cost') && (
         <section className="space-y-5">
-          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                   Order-of-Magnitude Cost Modeling
                 </p>
-                <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+                <h2 className="mt-1 text-lg font-extrabold text-slate-900 sm:text-xl dark:text-white">
                   Cloud Cost Intuition: 10k vs. 10M Requests / Month
                 </h2>
               </div>
 
-              <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-[#0f172a]">
+              <div className="grid grid-cols-2 rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs font-semibold sm:inline-flex dark:border-slate-700 dark:bg-[#0f172a]">
                 <button
                   type="button"
                   onClick={() => setTrafficTier('10k')}
-                  className={`rounded-lg px-3.5 py-1.5 transition ${trafficTier === '10k'
+                  className={`rounded-lg px-3.5 py-2 transition sm:py-1.5 ${trafficTier === '10k'
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                     }`}
@@ -829,7 +837,7 @@ export function ComparePage() {
                 <button
                   type="button"
                   onClick={() => setTrafficTier('10m')}
-                  className={`rounded-lg px-3.5 py-1.5 transition ${trafficTier === '10m'
+                  className={`rounded-lg px-3.5 py-2 transition sm:py-1.5 ${trafficTier === '10m'
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                     }`}
@@ -847,18 +855,18 @@ export function ComparePage() {
               {activeCostTier.items.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
+                  className="rounded-xl border border-stone-200 bg-stone-50 p-4 sm:p-5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <Link
                       to={`/modules/${item.id}`}
-                      className="inline-flex items-center gap-2.5 text-sm font-bold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
+                      className="inline-flex min-w-0 items-center gap-2.5 text-sm font-bold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
                     >
                       <ArchitectureIconBadge architectureId={item.id} size="sm" />
                       <span>{item.name}</span>
                     </Link>
                     <span
-                      className={`font-mono text-sm font-extrabold ${item.verdict === 'cheapest'
+                      className={`shrink-0 font-mono text-sm font-extrabold ${item.verdict === 'cheapest'
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : item.verdict === 'balanced'
                           ? 'text-sky-600 dark:text-sky-400'
@@ -896,24 +904,24 @@ export function ComparePage() {
 
       {/* Quiet Step Footer */}
       {viewMode === 'guided' && stepIdx < COMPARE_STEPS.length - 1 && (
-        <footer className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <footer className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
           {stepIdx > 0 ? (
             <button
               type="button"
               onClick={() => goToStep(stepIdx - 1)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 sm:w-auto dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <ArrowLeft className="h-4 w-4" />
               Previous: {COMPARE_STEPS[stepIdx - 1].label}
             </button>
           ) : (
-            <span />
+            <span className="hidden sm:inline" />
           )}
 
           <button
             type="button"
             onClick={() => goToStep(stepIdx + 1)}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto"
           >
             Continue: {COMPARE_STEPS[stepIdx + 1].label}
             <ArrowRight className="h-4 w-4" />
@@ -922,12 +930,12 @@ export function ComparePage() {
       )}
 
       {(viewMode === 'all' || stepIdx === COMPARE_STEPS.length - 1) && (
-        <footer className="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <footer className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {viewMode === 'guided' ? (
             <button
               type="button"
               onClick={() => goToStep(stepIdx - 1)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 sm:w-auto dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Cost Intuition
@@ -940,7 +948,7 @@ export function ComparePage() {
 
           <Link
             to="/simulator"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto"
           >
             <Compass className="h-4 w-4" />
             Open Decision Simulator

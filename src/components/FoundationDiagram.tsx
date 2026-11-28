@@ -50,7 +50,10 @@ export function FoundationDiagram({ blockId }: FoundationDiagramProps) {
   if (!meta) return null;
 
   return (
-    <figure className="overflow-hidden rounded-xl border border-slate-800 bg-[#0b1120] p-3.5">
+    <figure className="overflow-hidden rounded-xl border border-slate-800 bg-[#0b1120] p-2.5 sm:p-3.5">
+      <div className="mb-1.5 flex items-center justify-end px-1 text-[10px] font-medium text-slate-400 sm:hidden">
+        Swipe diagram ↔
+      </div>
       <div className="overflow-x-auto">
         {blockId === 'sync-vs-async' && (
           <svg

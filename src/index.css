@@ -21,10 +21,24 @@
     --accent-secondary-soft: #f9679c24;
   }
 
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     font-family: var(--font-sans);
     line-height: 1.65;
     letter-spacing: -0.005em;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  button,
+  a,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   strong,
@@ -51,6 +65,23 @@
 /* Comfortable reading line length for prose blocks */
 .prose-measure {
   max-width: 66ch;
+}
+
+/* Clean horizontally-scrollable tab strips on mobile */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Generous touch target for range sliders on touchscreens */
+@media (pointer: coarse) {
+  input[type="range"] {
+    min-height: 36px;
+  }
 }
 
 @keyframes flow-dash {

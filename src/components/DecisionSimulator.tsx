@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -82,6 +82,7 @@ export function DecisionSimulator({
     isScenarioIdx
   );
   const [jumpOpen, setJumpOpen] = useState(false);
+  const jumpRef = useRef<HTMLDivElement | null>(null);
   const scenario = SIMULATOR_SCENARIOS[scenarioIdx] ?? SIMULATOR_SCENARIOS[0];
 
   const [selectedArch, setSelectedArchState] = useState<ArchitectureId | null>(
@@ -136,28 +137,46 @@ export function DecisionSimulator({
   const bestFitOutcome = scenario.outcomes[scenario.bestFit];
   const bestFitModule = ARCHITECTURE_META_BY_ID[scenario.bestFit];
 
+  useEffect(() => {
+    if (!jumpOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (jumpRef.current && !jumpRef.current.contains(e.target as Node)) {
+        setJumpOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setJumpOpen(false);
+    };
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [jumpOpen]);
+
   return (
     <div className="space-y-6">
       {/* Unified Calm Case Card (Matches FoundationsPlayground layout) */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+      <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
         {/* Slim Progress Track + Jump Dropdown inside the card */}
-        <div className="mb-6 space-y-3">
+        <div className="mb-5 space-y-3 sm:mb-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="relative">
+            <div ref={jumpRef} className="relative min-w-0">
               <button
                 type="button"
                 onClick={() => setJumpOpen((o) => !o)}
                 aria-expanded={jumpOpen}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               >
-                <span>
+                <span className="truncate">
                   Case {scenarioIdx + 1} of {SIMULATOR_SCENARIOS.length} · {scenario.company}
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
               </button>
 
               {jumpOpen && (
-                <div className="absolute left-0 z-20 mt-1.5 max-h-80 w-80 overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
+                <div className="absolute left-0 z-20 mt-1.5 max-h-80 w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-[#0f172a]">
                   {SIMULATOR_SCENARIOS.map((s, idx) => {
                     const savedChoice = completedChoices[s.id];
                     const hitBestFit = savedChoice === s.bestFit;
@@ -167,7 +186,7 @@ export function DecisionSimulator({
                         key={s.id}
                         type="button"
                         onClick={() => handleSelectScenario(idx)}
-                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition ${
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition ${
                           isCurrent
                             ? 'bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
                             : 'text-slate-700 hover:bg-stone-100 dark:text-slate-300 dark:hover:bg-slate-800'
@@ -190,13 +209,13 @@ export function DecisionSimulator({
               )}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
                 disabled={scenarioIdx === 0}
                 onClick={() => handleSelectScenario(scenarioIdx - 1)}
                 aria-label="Previous case"
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -205,7 +224,7 @@ export function DecisionSimulator({
                 disabled={scenarioIdx === SIMULATOR_SCENARIOS.length - 1}
                 onClick={() => handleSelectScenario(scenarioIdx + 1)}
                 aria-label="Next case"
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -241,7 +260,7 @@ export function DecisionSimulator({
         </div>
 
         {/* Brief Heading & Story */}
-        <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+        <h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl dark:text-white">
           <CourseText text={scenario.title} />
         </h2>
         <p className="prose-measure mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
@@ -310,12 +329,12 @@ export function DecisionSimulator({
             })}
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <button
               type="button"
               disabled={!selectedArch}
               onClick={handleRunSimulation}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
               <Play className="h-4 w-4" />
               Run Architecture Simulation
@@ -325,7 +344,7 @@ export function DecisionSimulator({
               <button
                 type="button"
                 onClick={() => handleSelectScenario(scenarioIdx + 1)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 sm:w-auto dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Next Scenario
                 <ChevronRight className="h-4 w-4" />
@@ -338,7 +357,7 @@ export function DecisionSimulator({
       {/* Calm Simulation Outcome Card (Clean left accent instead of loud full-card tint) */}
       {outcome && simulatedArch && (
         <div
-          className={`rounded-2xl border border-l-4 border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033] ${VERDICT_STYLES[outcome.verdict].accent}`}
+          className={`rounded-2xl border border-l-4 border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033] ${VERDICT_STYLES[outcome.verdict].accent}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -524,7 +543,7 @@ export function DecisionSimulator({
                       key={arch.id}
                       className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="inline-flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
                           <ArchitectureIcon architectureId={arch.id} className="h-4 w-4" colored />
                           {arch.shortName}

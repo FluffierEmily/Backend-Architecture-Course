@@ -107,13 +107,17 @@ export function CircuitBreakerLab() {
       </div>
 
       {/* Live State-Machine SVG Diagram */}
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3.5">
-        <svg
-          viewBox="0 0 720 175"
-          className="h-auto w-full min-w-[500px]"
-          role="img"
-          aria-label="Live Circuit Breaker state machine diagram showing Closed, Open, and Half-Open transitions"
-        >
+      <div className="rounded-xl border border-slate-800 bg-[#0b1120] p-2.5 sm:p-3.5">
+        <div className="mb-1.5 flex items-center justify-end px-1 text-[10px] font-medium text-slate-400 sm:hidden">
+          Swipe diagram ↔
+        </div>
+        <div className="overflow-x-auto">
+          <svg
+            viewBox="0 0 720 175"
+            className="h-auto w-full min-w-[500px]"
+            role="img"
+            aria-label="Live Circuit Breaker state machine diagram showing Closed, Open, and Half-Open transitions"
+          >
           {/* Transition: CLOSED -> OPEN */}
           <path
             d="M 192 78 C 235 32, 265 32, 290 74"
@@ -218,25 +222,26 @@ export function CircuitBreakerLab() {
             1 Probe Request
           </text>
         </svg>
+        </div>
       </div>
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
         <button
           type="button"
           onClick={handleInjectFailure}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-rose-500"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-rose-500 sm:py-2"
         >
-          <ShieldAlert className="h-3.5 w-3.5" />
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
           Inject Downstream Failure ({consecutiveFailures}/{BREAKER_FAILURE_THRESHOLD})
         </button>
 
         <button
           type="button"
           onClick={handleHealthyCall}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-500"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-500 sm:py-2"
         >
-          <CheckCircle2 className="h-3.5 w-3.5" />
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           Send Healthy Request
         </button>
 
@@ -244,18 +249,18 @@ export function CircuitBreakerLab() {
           type="button"
           disabled={state !== 'open'}
           onClick={handleAdvanceCooldown}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:py-2"
         >
-          <Zap className="h-3.5 w-3.5" />
+          <Zap className="h-3.5 w-3.5 shrink-0" />
           Fast-Forward 30s Cooldown
         </button>
 
         <button
           type="button"
           onClick={handleReset}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-stone-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-stone-100 sm:py-2 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <RefreshCw className="h-3.5 w-3.5 shrink-0" />
           Reset
         </button>
       </div>
@@ -381,7 +386,7 @@ export function AvailabilityAndOutboxLab() {
           <button
             type="button"
             onClick={() => setCrashInjected((prev) => !prev)}
-            className={`shrink-0 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition ${
+            className={`w-full shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition sm:w-auto sm:py-2 ${
               crashInjected
                 ? 'bg-emerald-600 hover:bg-emerald-500'
                 : 'bg-rose-600 hover:bg-rose-500'
@@ -393,7 +398,11 @@ export function AvailabilityAndOutboxLab() {
           </button>
         </div>
 
-        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1120] p-3.5">
+        <div className="mt-4 rounded-xl border border-slate-800 bg-[#0b1120] p-2.5 sm:p-3.5">
+          <div className="mb-1.5 flex items-center justify-end px-1 text-[10px] font-medium text-slate-400 sm:hidden">
+            Swipe diagram ↔
+          </div>
+          <div className="overflow-x-auto">
           <svg
             viewBox="0 0 720 155"
             className="h-auto w-full min-w-[500px]"
@@ -469,6 +478,7 @@ export function AvailabilityAndOutboxLab() {
               Broker: Guaranteed Delivery ✓
             </text>
           </svg>
+          </div>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -479,7 +489,7 @@ export function AvailabilityAndOutboxLab() {
                 : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
             }`}
           >
-            <p className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-white">
+            <p className="flex flex-wrap items-center justify-between gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
               <span>1. Naive Dual-Write (DB then Broker)</span>
               {crashInjected && (
                 <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400">
@@ -501,7 +511,7 @@ export function AvailabilityAndOutboxLab() {
                 : 'border-stone-200 bg-stone-50 dark:border-slate-700/80 dark:bg-[#0f172a]/70'
             }`}
           >
-            <p className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-white">
+            <p className="flex flex-wrap items-center justify-between gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
               <span>2. Transactional Outbox + Relay</span>
               {crashInjected && (
                 <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">

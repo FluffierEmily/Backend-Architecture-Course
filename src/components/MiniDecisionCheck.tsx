@@ -76,11 +76,11 @@ export function MiniDecisionCheck({
           <CourseText text={check.prompt} />
         </p>
 
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
           <button
             type="button"
             onClick={() => handleAnswer(check.id, true)}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
+            className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-xs font-bold transition sm:w-auto sm:py-2.5 ${
               hasAnswered && userChoice === true
                 ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
                 : 'border-stone-200 bg-stone-50 text-slate-700 hover:bg-stone-100 dark:border-slate-700 dark:bg-[#0f172a] dark:text-slate-200 dark:hover:bg-slate-800'
@@ -98,7 +98,7 @@ export function MiniDecisionCheck({
           <button
             type="button"
             onClick={() => handleAnswer(check.id, false)}
-            className={`rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
+            className={`w-full rounded-xl border px-4 py-3 text-xs font-bold transition sm:w-auto sm:py-2.5 ${
               hasAnswered && userChoice === false
                 ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
                 : 'border-stone-200 bg-stone-50 text-slate-700 hover:bg-stone-100 dark:border-slate-700 dark:bg-[#0f172a] dark:text-slate-200 dark:hover:bg-slate-800'
@@ -183,9 +183,9 @@ export function MiniDecisionCheck({
   if (!activeCheck) return null;
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 lg:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Slim Progress Header matching Foundations */}
-      <div className="mb-6 space-y-3">
+      <div className="mb-5 space-y-3 sm:mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
             Check {activeIndex + 1} of {checks.length}
@@ -196,7 +196,7 @@ export function MiniDecisionCheck({
               <button
                 type="button"
                 onClick={() => setShowAll(true)}
-                className="text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
+                className="py-1 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 sm:py-0 dark:text-slate-400 dark:hover:text-indigo-300"
               >
                 Show All ({checks.length})
               </button>
@@ -207,7 +207,7 @@ export function MiniDecisionCheck({
                 disabled={activeIndex === 0}
                 onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
                 aria-label="Previous check"
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -216,7 +216,7 @@ export function MiniDecisionCheck({
                 disabled={activeIndex === checks.length - 1}
                 onClick={() => setActiveIndex((i) => Math.min(checks.length - 1, i + 1))}
                 aria-label="Next check"
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

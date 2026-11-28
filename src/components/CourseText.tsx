@@ -15,6 +15,7 @@ interface AbbreviationTokenProps {
 
 interface TooltipCoords {
   left: number;
+  width: number;
   top?: number;
   bottom?: number;
 }
@@ -30,6 +31,7 @@ const AbbreviationToken = memo(function AbbreviationToken({
   const { openTerm } = useTermDrawer();
   const [coords, setCoords] = useState<TooltipCoords | null>(null);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const lastTouchTsRef = useRef(0);
   const tooltipId = useId();
 
   const canOpenDrawer = interactive && Boolean(entry.drawer);
@@ -37,25 +39,26 @@ const AbbreviationToken = memo(function AbbreviationToken({
 
   const showTooltip = useCallback(() => {
     const el = triggerRef.current;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const width = Math.min(TOOLTIP_WIDTH, Math.max(180, vw - VIEWPORT_PADDING * 2));
+
     if (!el || typeof el.getBoundingClientRect !== 'function') {
-      setCoords({ left: VIEWPORT_PADDING, top: VIEWPORT_PADDING });
+      setCoords({ left: VIEWPORT_PADDING, width, top: VIEWPORT_PADDING });
       return;
     }
 
     const rect = el.getBoundingClientRect();
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
-
-    const centeredLeft = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
+    const centeredLeft = rect.left + rect.width / 2 - width / 2;
     const clampedLeft = Math.max(
       VIEWPORT_PADDING,
-      Math.min(centeredLeft, vw - TOOLTIP_WIDTH - VIEWPORT_PADDING)
+      Math.min(centeredLeft, vw - width - VIEWPORT_PADDING)
     );
 
     if (rect.top < 150) {
-      setCoords({ left: clampedLeft, top: rect.bottom + 8 });
+      setCoords({ left: clampedLeft, width, top: rect.bottom + 8 });
     } else {
-      setCoords({ left: clampedLeft, bottom: vh - rect.top + 8 });
+      setCoords({ left: clampedLeft, width, bottom: vh - rect.top + 8 });
     }
   }, []);
 
@@ -63,14 +66,27 @@ const AbbreviationToken = memo(function AbbreviationToken({
     setCoords(null);
   }, []);
 
+  const handleMouseEnter = useCallback(() => {
+    // Ignore synthesized mouseenter fired right after touchstart on mobile browsers
+    if (Date.now() - lastTouchTsRef.current < 600) return;
+    showTooltip();
+  }, [showTooltip]);
+
   useEffect(() => {
     if (!hovered) return;
     const dismiss = () => setCoords(null);
+    const dismissOnOutsidePointer = (e: PointerEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+        setCoords(null);
+      }
+    };
     window.addEventListener('scroll', dismiss, true);
     window.addEventListener('resize', dismiss);
+    window.addEventListener('pointerdown', dismissOnOutsidePointer, true);
     return () => {
       window.removeEventListener('scroll', dismiss, true);
       window.removeEventListener('resize', dismiss);
+      window.removeEventListener('pointerdown', dismissOnOutsidePointer, true);
     };
   }, [hovered]);
 
@@ -85,6 +101,15 @@ const AbbreviationToken = memo(function AbbreviationToken({
     [canOpenDrawer, entry.id, openTerm]
   );
 
+  const handleNonDrawerTap = useCallback(() => {
+    if (canOpenDrawer) return;
+    if (hovered) {
+      hideTooltip();
+    } else {
+      showTooltip();
+    }
+  }, [canOpenDrawer, hovered, hideTooltip, showTooltip]);
+
   const tooltipNode =
     hovered && coords && typeof document !== 'undefined'
       ? createPortal(
@@ -96,7 +121,7 @@ const AbbreviationToken = memo(function AbbreviationToken({
               left: `${coords.left}px`,
               top: coords.top !== undefined ? `${coords.top}px` : undefined,
               bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
-              width: `${TOOLTIP_WIDTH}px`,
+              width: `${coords.width}px`,
             }}
             className="pointer-events-none z-[100] rounded-xl border border-slate-700/90 bg-[#0f172a] p-3 text-left text-xs font-normal normal-case tracking-normal text-slate-100 shadow-2xl"
           >
@@ -121,7 +146,10 @@ const AbbreviationToken = memo(function AbbreviationToken({
       ref={triggerRef}
       style={{ display: 'inline' }}
       className="relative inline"
-      onMouseEnter={showTooltip}
+      onTouchStart={() => {
+        lastTouchTsRef.current = Date.now();
+      }}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={hideTooltip}
     >
       <span
@@ -131,7 +159,7 @@ const AbbreviationToken = memo(function AbbreviationToken({
         aria-describedby={hovered ? tooltipId : undefined}
         onFocus={showTooltip}
         onBlur={hideTooltip}
-        onClick={canOpenDrawer ? handleOpen : undefined}
+        onClick={canOpenDrawer ? handleOpen : handleNonDrawerTap}
         onKeyDown={
           canOpenDrawer
             ? (e) => {
@@ -216,7 +244,7 @@ export const CourseText = memo(function CourseText({
           return (
             <code
               key={idx}
-              className="rounded-md bg-stone-200/75 px-1.5 py-0.5 font-mono text-[0.9em] text-slate-800 dark:bg-slate-800/90 dark:text-indigo-200"
+              className="break-words rounded-md bg-stone-200/75 px-1.5 py-0.5 font-mono text-[0.9em] text-slate-800 dark:bg-slate-800/90 dark:text-indigo-200"
             >
               {seg.value}
             </code>

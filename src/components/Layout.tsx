@@ -83,7 +83,7 @@ const CourseSidebar = memo(function CourseSidebar({
       aria-hidden={!sidebarOpen}
       onMouseEnter={onCancelScheduledClose}
       onMouseLeave={onScheduleClose}
-      className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-stone-200 bg-white shadow-xl transition-[transform,opacity,visibility] duration-200 ease-out dark:border-slate-800 dark:bg-[#0c1322] ${
+      className={`fixed inset-y-0 left-0 z-50 h-dvh w-[min(19rem,86vw)] border-r border-stone-200 bg-white shadow-xl transition-[transform,opacity,visibility] duration-200 ease-out sm:w-72 dark:border-slate-800 dark:bg-[#0c1322] ${
         sidebarOpen
           ? 'visible translate-x-0 opacity-100'
           : 'invisible pointer-events-none -translate-x-full opacity-0'
@@ -91,19 +91,19 @@ const CourseSidebar = memo(function CourseSidebar({
     >
       <div className="flex h-full flex-col">
         {/* Brand */}
-        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-5 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:py-5 dark:border-slate-800">
           <Link
             to="/"
             onClick={onCloseNow}
             onMouseEnter={() => prefetchRoute('/')}
             onFocus={() => prefetchRoute('/')}
-            className="flex items-center gap-3"
+            className="flex min-w-0 items-center gap-3"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
               <Layers className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-sm font-extrabold leading-tight text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-extrabold leading-tight text-slate-900 dark:text-white">
                 Backend Architectures
               </p>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -116,7 +116,7 @@ const CourseSidebar = memo(function CourseSidebar({
             type="button"
             onClick={onCloseNow}
             aria-label="Close navigation menu"
-            className="rounded-lg p-1.5 text-slate-500 hover:bg-stone-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="rounded-lg p-2 text-slate-500 hover:bg-stone-100 dark:text-slate-400 dark:hover:bg-slate-800"
           >
             <X className="h-5 w-5" />
           </button>
@@ -268,7 +268,7 @@ const CourseSidebar = memo(function CourseSidebar({
         </nav>
 
         {/* Compact Reading Comfort & Theme Footer */}
-        <div className="space-y-2 border-t border-stone-200 px-3.5 py-3 dark:border-slate-800/90">
+        <div className="space-y-2 border-t border-stone-200 px-3.5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800/90">
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
@@ -390,18 +390,23 @@ export function Layout({
 
   useEffect(() => {
     if (!sidebarOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         closeSidebarNow();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [sidebarOpen, closeSidebarNow]);
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-slate-900 dark:bg-[#0f172a] dark:text-slate-100">
-      {/* Full-Height Clickable & Hoverable Left Edge Area */}
+    <div className="min-h-dvh bg-[#faf9f6] text-slate-900 dark:bg-[#0f172a] dark:text-slate-100">
+      {/* Full-Height Clickable & Hoverable Left Edge Area (Desktop Only) */}
       <button
         type="button"
         onMouseEnter={openSidebar}
@@ -409,21 +414,21 @@ export function Layout({
         aria-label="Open navigation sidebar"
         aria-expanded={sidebarOpen}
         title="Hover or click to open navigation"
-        className="group fixed inset-y-0 left-0 z-30 flex w-6 cursor-pointer items-center justify-center border-r border-stone-200/80 bg-stone-100/50 transition-all duration-150 hover:w-8 hover:border-indigo-400/50 hover:bg-indigo-500/[0.08] focus-visible:w-8 sm:w-7 dark:border-slate-800/90 dark:bg-[#0c1322]/60 dark:hover:border-indigo-400/40 dark:hover:bg-indigo-500/[0.12]"
+        className="group fixed inset-y-0 left-0 z-30 hidden w-7 cursor-pointer items-center justify-center border-r border-stone-200/80 bg-stone-100/50 transition-all duration-150 hover:w-8 hover:border-indigo-400/50 hover:bg-indigo-500/[0.08] focus-visible:w-8 lg:flex dark:border-slate-800/90 dark:bg-[#0c1322]/60 dark:hover:border-indigo-400/40 dark:hover:bg-indigo-500/[0.12]"
       >
         <span className="flex h-14 w-4 items-center justify-center rounded-full bg-stone-200/80 text-slate-500 transition group-hover:bg-indigo-600 group-hover:text-white dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-indigo-500 dark:group-hover:text-white">
           <ChevronRight className="h-3.5 w-3.5" />
         </span>
       </button>
 
-      {/* Mobile Top Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-stone-200 bg-[#faf9f6]/95 py-3 pl-9 pr-4 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-[#0f172a]/95">
-        <div className="flex items-center gap-3">
+      {/* Mobile & Tablet Top Bar */}
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-stone-200 bg-[#faf9f6]/95 px-3.5 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur sm:px-6 lg:hidden dark:border-slate-800 dark:bg-[#0f172a]/95">
+        <div className="flex min-w-0 items-center gap-2.5">
           <button
             type="button"
             onClick={openSidebar}
             aria-label="Open navigation menu"
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-stone-50 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-stone-50 sm:px-3 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <Menu className="h-4 w-4" />
             <span className="hidden sm:inline">Menu</span>
@@ -432,24 +437,34 @@ export function Layout({
             to="/"
             onMouseEnter={() => prefetchRoute('/')}
             onFocus={() => prefetchRoute('/')}
-            className="text-sm font-extrabold text-slate-900 dark:text-white"
+            className="truncate text-sm font-extrabold text-slate-900 dark:text-white"
           >
-            Backend Architectures Course
+            Backend Architectures
           </Link>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          aria-label="Toggle color theme"
-          className="rounded-xl border border-stone-200 bg-white p-2 text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200"
-        >
-          {theme === 'dark' ? (
-            <Sun className="h-4 w-4 text-amber-400" />
-          ) : (
-            <Moon className="h-4 w-4 text-indigo-500" />
-          )}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={openSidebar}
+            aria-label={`Course progress ${overallPercent}%`}
+            className="rounded-full bg-indigo-500/15 px-2.5 py-1 font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-300"
+          >
+            {overallPercent}%
+          </button>
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label="Toggle color theme"
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-stone-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-4 w-4 text-amber-400" />
+            ) : (
+              <Moon className="h-4 w-4 text-indigo-500" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Backdrop when Sidebar is Open */}
@@ -479,8 +494,10 @@ export function Layout({
       />
 
       {/* Main Content with Generous Breathing Room */}
-      <main className="pl-6 sm:pl-7">
-        <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 lg:px-10">{children}</div>
+      <main className="lg:pl-7">
+        <div className="mx-auto max-w-4xl px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+          {children}
+        </div>
       </main>
     </div>
   );

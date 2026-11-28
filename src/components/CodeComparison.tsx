@@ -106,9 +106,11 @@ const CodeLine = memo(
             ? `Inspect: ${matchedAnnotation.label}`
             : undefined
         }
-        className={`flex px-3.5 py-0.5 transition-colors ${highlightClasses}`}
+        className={`flex px-2.5 transition-colors sm:px-3.5 ${
+          isInteractive ? 'py-1 sm:py-0.5' : 'py-0.5'
+        } ${highlightClasses}`}
       >
-        <span className="mr-4 inline-block w-6 shrink-0 select-none text-right text-xs text-slate-500">
+        <span className="mr-2.5 inline-block w-5 shrink-0 select-none text-right text-[11px] text-slate-500 sm:mr-4 sm:w-6 sm:text-xs">
           {lineNumber}
         </span>
         <span className="flex-1 whitespace-pre">
@@ -170,13 +172,13 @@ const CodePane = memo(function CodePane({
     >
       {/* Calm Pane Header */}
       <div
-        className={`flex items-center justify-between gap-2 border-b px-4 py-3 ${
+        className={`flex flex-wrap items-center justify-between gap-2 border-b px-3.5 py-2.5 sm:px-4 sm:py-3 ${
           isProblem
             ? 'border-rose-500/20 bg-rose-950/25'
             : 'border-emerald-500/20 bg-emerald-950/25'
         }`}
       >
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {isProblem ? (
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
@@ -184,17 +186,17 @@ const CodePane = memo(function CodePane({
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             )}
             <span
-              className={`truncate text-sm font-semibold ${
+              className={`truncate text-xs font-semibold sm:text-sm ${
                 isProblem ? 'text-rose-200' : 'text-emerald-200'
               }`}
             >
               {title}
             </span>
           </div>
-          <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{file}</p>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400 sm:text-xs">{file}</p>
         </div>
         <span
-          className={`shrink-0 text-[11px] font-bold uppercase tracking-wider ${
+          className={`shrink-0 text-[10px] font-bold uppercase tracking-wider sm:text-[11px] ${
             isProblem ? 'text-rose-300' : 'text-emerald-300'
           }`}
         >
@@ -203,7 +205,7 @@ const CodePane = memo(function CodePane({
       </div>
 
       {/* Highlighted Code with Comfortable Line Spacing */}
-      <div className="overflow-x-auto py-4 text-[13.5px] leading-7">
+      <div className="overflow-x-auto py-3 text-xs leading-6 sm:py-4 sm:text-[13.5px] sm:leading-7">
         <Highlight theme={themes.nightOwl} code={trimmedCode} language="typescript">
           {({ tokens, getLineProps, getTokenProps }) => (
             <pre className="m-0 bg-transparent font-mono">
@@ -245,13 +247,13 @@ const CodePane = memo(function CodePane({
       {/* Synced Single Explainer Footer */}
       {!quizMode && !showAllExplainers && activeAnnotation && (
         <div
-          className={`mt-auto border-t px-5 py-4 text-sm ${
+          className={`mt-auto border-t px-4 py-3.5 text-sm sm:px-5 sm:py-4 ${
             isProblem
               ? 'border-rose-500/20 bg-rose-950/25 text-rose-100'
               : 'border-emerald-500/20 bg-emerald-950/25 text-emerald-100'
           }`}
         >
-          <div className="mb-1.5 flex items-center justify-between gap-2">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <span
               className={`text-xs font-bold uppercase tracking-wider ${
                 isProblem ? 'text-rose-300' : 'text-emerald-300'
@@ -377,11 +379,11 @@ export const CodeComparison = memo(function CodeComparison({
   };
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs sm:p-6 dark:border-slate-700/80 dark:bg-[#162033]">
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+          <h3 className="text-base font-extrabold text-slate-900 sm:text-lg dark:text-white">
             <CourseText text={item.title} />
           </h3>
           <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
@@ -392,7 +394,7 @@ export const CodeComparison = memo(function CodeComparison({
           <button
             type="button"
             onClick={toggleQuizMode}
-            className={`inline-flex items-center gap-1.5 text-xs font-semibold transition ${
+            className={`inline-flex items-center gap-1.5 py-1 text-xs font-semibold transition sm:py-0 ${
               quizMode
                 ? 'text-indigo-600 underline decoration-indigo-500/50 underline-offset-4 dark:text-indigo-300'
                 : 'text-slate-500 underline decoration-slate-400/50 underline-offset-4 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300'
@@ -409,7 +411,7 @@ export const CodeComparison = memo(function CodeComparison({
                 setShowAllExplainers((prev) => !prev);
                 onInspect?.(item.id);
               }}
-              className="text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300"
+              className="py-1 text-xs font-medium text-slate-500 underline decoration-slate-400/50 underline-offset-4 transition hover:text-indigo-600 sm:py-0 dark:text-slate-400 dark:hover:text-indigo-300"
             >
               {showAllExplainers ? 'Focus One Highlight' : 'View All Explainers'}
             </button>
@@ -418,54 +420,54 @@ export const CodeComparison = memo(function CodeComparison({
       </div>
 
       {/* Scenario Context */}
-      <p className="prose-measure mb-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300">
+      <p className="prose-measure mb-4 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-sm leading-6 text-slate-700 sm:mb-5 sm:px-4 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300">
         <strong>Scenario: </strong>
         <CourseText text={item.context} />
       </p>
 
       {/* Quiet Highlight Selector Bar (Hidden during Quiz Mode so pitfalls aren't spoiled) */}
       {!quizMode && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-slate-700/80">
-          <div
-            className="flex flex-wrap items-center gap-2"
-            role="tablist"
-            aria-label="Code highlights"
-          >
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Focus:
-            </span>
-            {item.annotations.map((ann) => {
-              const isSelected = !showAllExplainers && ann.id === activeAnnotation?.id;
-              return (
-                <button
-                  key={ann.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  onClick={() => {
-                    setShowAllExplainers(false);
-                    handleSelect(ann.id);
-                  }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    isSelected
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-stone-100 text-slate-600 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {ann.label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="mb-4 space-y-3 border-b border-stone-200 pb-3 sm:mb-5 dark:border-slate-700/80">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="tablist"
+              aria-label="Code highlights"
+            >
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Focus:
+              </span>
+              {item.annotations.map((ann) => {
+                const isSelected = !showAllExplainers && ann.id === activeAnnotation?.id;
+                return (
+                  <button
+                    key={ann.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      setShowAllExplainers(false);
+                      handleSelect(ann.id);
+                    }}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition sm:py-1.5 ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-stone-100 text-slate-600 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {ann.label}
+                  </button>
+                );
+              })}
+            </div>
 
-          <div className="flex items-center gap-2">
             {item.annotations.length > 1 && !showAllExplainers && (
               <div className="inline-flex items-center gap-1">
                 <button
                   type="button"
                   aria-label="Previous highlight"
                   onClick={() => stepAnnotation(-1)}
-                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 sm:p-1.5 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -473,30 +475,30 @@ export const CodeComparison = memo(function CodeComparison({
                   type="button"
                   aria-label="Next highlight"
                   onClick={() => stepAnnotation(1)}
-                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 sm:p-1.5 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             )}
+          </div>
 
-            {/* Mobile pane switcher */}
-            <div className="inline-flex rounded-xl border border-stone-200 bg-stone-100 p-0.5 text-xs lg:hidden dark:border-slate-700 dark:bg-[#0f172a]">
-              {(['split', 'problem', 'refactored'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setMobileTab(tab)}
-                  className={`rounded-lg px-2.5 py-1 font-medium capitalize transition ${
-                    mobileTab === tab
-                      ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-800 dark:text-white'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  {tab === 'problem' ? 'Problematic' : tab}
-                </button>
-              ))}
-            </div>
+          {/* Mobile & Tablet pane switcher */}
+          <div className="grid w-full grid-cols-3 rounded-xl border border-stone-200 bg-stone-100 p-1 text-xs sm:inline-grid sm:w-auto lg:hidden dark:border-slate-700 dark:bg-[#0f172a]">
+            {(['split', 'problem', 'refactored'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setMobileTab(tab)}
+                className={`rounded-lg px-3 py-1.5 font-semibold transition ${
+                  mobileTab === tab
+                    ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-800 dark:text-white'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                {tab === 'split' ? 'Both' : tab === 'problem' ? 'Problematic' : 'Refactored'}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -523,9 +525,9 @@ export const CodeComparison = memo(function CodeComparison({
         )}
 
         {quizMode ? (
-          <div className="flex flex-col justify-between rounded-2xl border border-stone-200 bg-stone-50 p-6 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
+          <div className="flex flex-col justify-between rounded-2xl border border-stone-200 bg-stone-50 p-4 sm:p-6 dark:border-slate-700/80 dark:bg-[#0f172a]/70">
             <div>
-              <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
                 <span className="text-indigo-600 dark:text-indigo-400">
                   Spot the Pitfall · Active Recall
                 </span>
@@ -537,12 +539,12 @@ export const CodeComparison = memo(function CodeComparison({
               <h4 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
                 {allSpotted
                   ? 'You spotted every pitfall!'
-                  : 'Click the risky lines in the Problematic code'}
+                  : 'Tap the risky lines in the Problematic code'}
               </h4>
               <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {allSpotted
                   ? 'Reveal the Refactored code to compare how each issue is fixed cleanly.'
-                  : 'Tap any line on the left that looks risky before peeking at the refactored solution.'}
+                  : 'Tap any line in the Problematic code that looks risky before peeking at the refactored solution.'}
               </p>
 
               {/* Progress Track */}
@@ -600,7 +602,7 @@ export const CodeComparison = memo(function CodeComparison({
                   setQuizMode(false);
                   onInspect?.(item.id);
                 }}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-500 sm:w-auto"
               >
                 <Eye className="h-4 w-4" />
                 Reveal Refactored Code
