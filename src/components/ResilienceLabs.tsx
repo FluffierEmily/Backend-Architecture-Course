@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, RefreshCw, ShieldAlert, Zap } from 'lucide-react';
+import { CourseText } from './CourseText';
 
 type BreakerState = 'closed' | 'open' | 'half-open';
 
@@ -319,7 +320,7 @@ export function AvailabilityAndOutboxLab() {
 
             <div>
               <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-                Per-Service SLO
+                <CourseText text="Per-Service SLO" />
               </p>
               <div className="flex flex-wrap gap-2">
                 {([99.5, 99.9, 99.95] as const).map((slo) => (
@@ -509,9 +510,13 @@ export function AvailabilityAndOutboxLab() {
               )}
             </p>
             <p className="mt-2 text-xs leading-6 text-slate-600 dark:text-slate-300">
-              {crashInjected
-                ? 'Trip update and `outbox_events` row committed atomically inside ONE SQL transaction. When the relay restarts (using `SKIP LOCKED` or CDC), it publishes `TripCompleted` safely.'
-                : 'Both the state change and the outbound event live in the same database transaction — atomic by design.'}
+              <CourseText
+                text={
+                  crashInjected
+                    ? 'Trip update and `outbox_events` row committed atomically inside ONE SQL transaction. When the relay restarts (using `SKIP LOCKED` or CDC), it publishes `TripCompleted` safely.'
+                    : 'Both the state change and the outbound event live in the same database transaction — atomic by design.'
+                }
+              />
             </p>
           </div>
         </div>

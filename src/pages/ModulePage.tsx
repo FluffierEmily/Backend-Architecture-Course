@@ -24,6 +24,7 @@ import {
 import { MiniDecisionCheck } from '../components/MiniDecisionCheck';
 import { PatternDiagram, hasPatternDiagram } from '../components/PatternDiagram';
 import { ImplementationDrawer } from '../components/ImplementationDrawer';
+import { CourseText } from '../components/CourseText';
 import { PracticeProjectCard } from '../components/PracticeProjectCard';
 import type { CourseProgressState } from '../hooks/useCourseProgress';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -180,10 +181,10 @@ function ModulePageContent({
               )}
             </div>
             <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              {mod.name}
+              <CourseText text={mod.name} interactive={false} />
             </h1>
             <p className="prose-measure mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
-              {mod.tagline}
+              <CourseText text={mod.tagline} />
             </p>
           </div>
         </div>
@@ -244,10 +245,10 @@ function ModulePageContent({
           >
             <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.08] p-4 sm:p-5">
               <p className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-                TL;DR — The Core Idea
+                <CourseText text="TL;DR — The Core Idea" />
               </p>
               <p className="prose-measure mt-1.5 text-sm leading-7 text-slate-800 dark:text-slate-100">
-                {mod.beginnerSummary}
+                <CourseText text={mod.beginnerSummary} />
               </p>
             </div>
 
@@ -256,20 +257,20 @@ function ModulePageContent({
                 Real-World Example · {mod.scenario.company}
               </p>
               <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
-                {mod.scenario.domain}
+                <CourseText text={mod.scenario.domain} />
               </h2>
               <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <strong>Team:</strong> {mod.scenario.teamSize} &nbsp;·&nbsp;{' '}
-                <strong>Traffic:</strong> {mod.scenario.trafficProfile}
+                <strong>Team:</strong> <CourseText text={mod.scenario.teamSize} /> &nbsp;·&nbsp;{' '}
+                <strong>Traffic:</strong> <CourseText text={mod.scenario.trafficProfile} />
               </p>
 
               <p className="prose-measure mt-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
-                {mod.scenario.story}
+                <CourseText text={mod.scenario.story} />
               </p>
 
               <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-7 text-slate-800 dark:text-slate-100">
                 <strong>Why this fits: </strong>
-                {mod.scenario.whyThisArchitecture}
+                <CourseText text={mod.scenario.whyThisArchitecture} />
               </div>
             </div>
           </section>
@@ -284,7 +285,9 @@ function ModulePageContent({
                 {mod.whenToUse.map((item) => (
                   <li key={item} className="flex gap-2.5">
                     <span className="font-bold text-emerald-500">✓</span>
-                    <span>{item}</span>
+                    <span>
+                      <CourseText text={item} />
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -298,7 +301,9 @@ function ModulePageContent({
                 {mod.whenToAvoid.map((item) => (
                   <li key={item} className="flex gap-2.5">
                     <span className="font-bold text-rose-500">✕</span>
-                    <span>{item}</span>
+                    <span>
+                      <CourseText text={item} />
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -421,10 +426,10 @@ function ModulePageContent({
                   {activeConcept.badge}
                 </p>
                 <h3 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
-                  {activeConcept.title}
+                  <CourseText text={activeConcept.title} />
                 </h3>
                 <p className="prose-measure mt-2.5 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                  {activeConcept.summary}
+                  <CourseText text={activeConcept.summary} />
                 </p>
 
                 {activeConcept.bulletPoints && activeConcept.bulletPoints.length > 0 && (
@@ -432,7 +437,9 @@ function ModulePageContent({
                     {activeConcept.bulletPoints.map((bp) => (
                       <li key={bp} className="flex gap-2.5">
                         <span className="font-bold text-indigo-500">→</span>
-                        <span>{bp}</span>
+                        <span>
+                          <CourseText text={bp} />
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -444,7 +451,7 @@ function ModulePageContent({
 
                 <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-6 text-slate-800 dark:text-slate-100">
                   <strong>Key Takeaway: </strong>
-                  {activeConcept.keyTakeaway}
+                  <CourseText text={activeConcept.keyTakeaway} />
                 </div>
 
                 {activeConcept.howToImplement && activeConcept.howToImplement.length > 0 && (
@@ -480,10 +487,10 @@ function ModulePageContent({
                         {concept.badge}
                       </p>
                       <h3 className="mt-1.5 text-lg font-bold text-slate-900 dark:text-white">
-                        {concept.title}
+                        <CourseText text={concept.title} />
                       </h3>
                       <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                        {concept.summary}
+                        <CourseText text={concept.summary} />
                       </p>
 
                       {concept.bulletPoints && concept.bulletPoints.length > 0 && (
@@ -491,7 +498,9 @@ function ModulePageContent({
                           {concept.bulletPoints.map((bp) => (
                             <li key={bp} className="flex gap-2.5">
                               <span className="font-bold text-indigo-500">→</span>
-                              <span>{bp}</span>
+                              <span>
+                                <CourseText text={bp} />
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -504,7 +513,7 @@ function ModulePageContent({
 
                     <div className="mt-5 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-3.5 text-sm leading-6 text-slate-800 dark:text-slate-100">
                       <strong>Key Takeaway: </strong>
-                      {concept.keyTakeaway}
+                      <CourseText text={concept.keyTakeaway} />
                     </div>
 
                     {concept.howToImplement && concept.howToImplement.length > 0 && (
@@ -653,10 +662,10 @@ function ModulePageContent({
                       className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]"
                     >
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                        {bp.title}
+                        <CourseText text={bp.title} />
                       </h3>
                       <p className="prose-measure mt-1.5 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                        {bp.detail}
+                        <CourseText text={bp.detail} />
                       </p>
                     </div>
                   ))}
@@ -677,15 +686,15 @@ function ModulePageContent({
                       className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]"
                     >
                       <h3 className="text-sm font-bold text-rose-700 dark:text-rose-300">
-                        {pf.title}
+                        <CourseText text={pf.title} />
                       </h3>
                       <p className="prose-measure mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                         <strong>Red flag: </strong>
-                        {pf.symptom}
+                        <CourseText text={pf.symptom} />
                       </p>
                       <p className="prose-measure mt-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3.5 py-2.5 text-sm leading-6 text-emerald-900 dark:text-emerald-200">
                         <strong className="text-emerald-700 dark:text-emerald-300">Fix: </strong>
-                        {pf.fix}
+                        <CourseText text={pf.fix} />
                       </p>
                       {pf.howToImplement && (
                         <ImplementationDrawer

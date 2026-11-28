@@ -11,6 +11,7 @@ import {
 import type { CodeAnnotation, CodeComparisonItem } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ImplementationDrawer } from './ImplementationDrawer';
+import { CourseText } from './CourseText';
 
 interface CodeComparisonProps {
   item: CodeComparisonItem;
@@ -266,9 +267,13 @@ const CodePane = memo(function CodePane({
             </span>
           </div>
           <p className="leading-7 text-slate-200">
-            {isProblem
-              ? activeAnnotation.problemExplanation
-              : activeAnnotation.refactoredExplanation}
+            <CourseText
+              text={
+                isProblem
+                  ? activeAnnotation.problemExplanation
+                  : activeAnnotation.refactoredExplanation
+              }
+            />
           </p>
         </div>
       )}
@@ -376,9 +381,11 @@ export const CodeComparison = memo(function CodeComparison({
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">{item.title}</h3>
+          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+            <CourseText text={item.title} />
+          </h3>
           <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
-            {item.subtitle}
+            <CourseText text={item.subtitle} />
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-4 self-start">
@@ -413,7 +420,7 @@ export const CodeComparison = memo(function CodeComparison({
       {/* Scenario Context */}
       <p className="prose-measure mb-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-slate-700/80 dark:bg-[#0f172a]/70 dark:text-slate-300">
         <strong>Scenario: </strong>
-        {item.context}
+        <CourseText text={item.context} />
       </p>
 
       {/* Quiet Highlight Selector Bar (Hidden during Quiz Mode so pitfalls aren't spoiled) */}
@@ -578,7 +585,7 @@ export const CodeComparison = memo(function CodeComparison({
                           </span>
                         </div>
                         <p className="mt-1.5 text-xs leading-6 text-slate-700 dark:text-slate-200">
-                          {ann.problemExplanation}
+                          <CourseText text={ann.problemExplanation} />
                         </p>
                       </div>
                     ))}
@@ -634,7 +641,7 @@ export const CodeComparison = memo(function CodeComparison({
                   </span>
                 </div>
                 <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
-                  {ann.problemExplanation}
+                  <CourseText text={ann.problemExplanation} />
                 </p>
               </div>
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] p-4">
@@ -645,7 +652,7 @@ export const CodeComparison = memo(function CodeComparison({
                   </span>
                 </div>
                 <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
-                  {ann.refactoredExplanation}
+                  <CourseText text={ann.refactoredExplanation} />
                 </p>
               </div>
             </div>

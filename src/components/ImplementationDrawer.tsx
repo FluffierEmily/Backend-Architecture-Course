@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, ChevronUp, Copy, Wrench } from 'lucide-react';
 import type { ImplementationRecipe } from '../types/course';
+import { CourseText } from './CourseText';
 
 interface ImplementationDrawerProps {
   recipes: ImplementationRecipe[];
@@ -142,7 +143,7 @@ export const ImplementationDrawer = memo(function ImplementationDrawer({
 
           {/* Active Recipe Summary */}
           <p className="prose-measure text-sm leading-6 text-slate-700 dark:text-slate-200">
-            {activeRecipe.summary}
+            <CourseText text={activeRecipe.summary} />
           </p>
 
           {/* Numbered Micro-Steps */}
@@ -155,7 +156,9 @@ export const ImplementationDrawer = memo(function ImplementationDrawer({
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
                   {i + 1}
                 </span>
-                <span className="prose-measure">{step}</span>
+                <span className="prose-measure">
+                  <CourseText text={step} />
+                </span>
               </li>
             ))}
           </ol>
@@ -197,7 +200,7 @@ export const ImplementationDrawer = memo(function ImplementationDrawer({
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <span>
                 <strong className="text-amber-800 dark:text-amber-300">Gotcha: </strong>
-                {activeRecipe.watchOut}
+                <CourseText text={activeRecipe.watchOut} />
               </span>
             </div>
           )}

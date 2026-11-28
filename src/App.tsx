@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { TermDrawer } from './components/TermDrawer';
+import { TermDrawerProvider } from './context/TermDrawerContext';
 import { useCourseProgress } from './hooks/useCourseProgress';
 import { useTheme } from './hooks/useTheme';
 import { useReadingPrefs } from './hooks/useReadingPrefs';
@@ -119,15 +121,16 @@ export function AppRoutes() {
   }, [markSectionComplete]);
 
   return (
-    <Layout
-      progress={progress}
-      overallPercent={overallPercent}
-      theme={theme}
-      readingPrefs={prefs}
-      onToggleTheme={toggleTheme}
-      onToggleCalmMotion={toggleCalmMotion}
-      onResetProgress={handleResetProgress}
-    >
+    <TermDrawerProvider>
+      <Layout
+        progress={progress}
+        overallPercent={overallPercent}
+        theme={theme}
+        readingPrefs={prefs}
+        onToggleTheme={toggleTheme}
+        onToggleCalmMotion={toggleCalmMotion}
+        onResetProgress={handleResetProgress}
+      >
       <RouteMetadata />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
@@ -179,7 +182,9 @@ export function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </Layout>
+      </Layout>
+      <TermDrawer />
+    </TermDrawerProvider>
   );
 }
 

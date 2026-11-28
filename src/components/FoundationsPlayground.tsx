@@ -31,6 +31,7 @@ import type { FoundationBlock } from '../types/course';
 import { AvailabilityAndOutboxLab, CircuitBreakerLab } from './ResilienceLabs';
 import { FoundationDiagram, hasFoundationDiagram } from './FoundationDiagram';
 import { ImplementationDrawer } from './ImplementationDrawer';
+import { CourseText } from './CourseText';
 import { ArchitectureIcon } from './ArchitectureIcon';
 import { usePersistedState } from '../hooks/usePersistedState';
 
@@ -207,12 +208,12 @@ export function FoundationsPlayground({
             </div>
             <div>
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                {activeBlock.name}
+                <CourseText text={activeBlock.name} />
               </h2>
             </div>
           </div>
           <p className="prose-measure mt-2.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            {activeBlock.oneLiner}
+            <CourseText text={activeBlock.oneLiner} />
           </p>
 
           {/* Content Blocks */}
@@ -222,7 +223,7 @@ export function FoundationsPlayground({
                 Real-World Analogy
               </p>
               <p className="prose-measure mt-1.5 text-sm leading-7 text-slate-800 dark:text-slate-100">
-                {activeBlock.realWorldAnalogy}
+                <CourseText text={activeBlock.realWorldAnalogy} />
               </p>
             </div>
 
@@ -231,7 +232,7 @@ export function FoundationsPlayground({
                 How It Works in Backends
               </p>
               <p className="prose-measure mt-1.5 text-sm leading-7 text-slate-700 dark:text-slate-200">
-                {activeBlock.howItWorks}
+                <CourseText text={activeBlock.howItWorks} />
               </p>
             </div>
 
@@ -245,7 +246,7 @@ export function FoundationsPlayground({
                 Beginner Watch-Out
               </p>
               <p className="prose-measure mt-1.5 text-sm leading-7 text-slate-800 dark:text-slate-100">
-                {activeBlock.beginnerWatchOut}
+                <CourseText text={activeBlock.beginnerWatchOut} />
               </p>
             </div>
 
@@ -339,8 +340,7 @@ export function FoundationsPlayground({
                       Why Queues &amp; Async Matter During Traffic Spikes
                     </h2>
                     <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Toggle a sudden 10x burst of PDF/image jobs to compare a direct synchronous
-                      server against a queue-buffered worker backend.
+                      <CourseText text="Toggle a sudden 10x burst of PDF/image jobs to compare a direct synchronous server against a queue-buffered worker backend." />
                     </p>
                   </div>
                   <button
@@ -385,7 +385,7 @@ export function FoundationsPlayground({
                     <div className="mt-4 space-y-2.5 text-xs">
                       <div className="flex justify-between">
                         <span className="text-slate-600 dark:text-slate-400">
-                          Server CPU &amp; Memory
+                          <CourseText text="Server CPU & Memory" />
                         </span>
                         <span className="font-mono font-bold text-slate-900 dark:text-white">
                           {trafficSpike ? '100% Saturated' : '32%'}
@@ -406,9 +406,13 @@ export function FoundationsPlayground({
                       </div>
                     </div>
                     <p className="mt-3.5 text-xs leading-6 text-slate-600 dark:text-slate-300">
-                      {trafficSpike
-                        ? 'Because the HTTP handler waits for heavy work to finish, all worker threads fill up and new users hit timeouts.'
-                        : 'Under steady low traffic, synchronous handling is simple and fast.'}
+                      <CourseText
+                        text={
+                          trafficSpike
+                            ? 'Because the HTTP handler waits for heavy work to finish, all worker threads fill up and new users hit timeouts.'
+                            : 'Under steady low traffic, synchronous handling is simple and fast.'
+                        }
+                      />
                     </p>
                   </div>
 
@@ -453,9 +457,13 @@ export function FoundationsPlayground({
                       </div>
                     </div>
                     <p className="mt-3.5 text-xs leading-6 text-slate-600 dark:text-slate-300">
-                      {trafficSpike
-                        ? 'The API replies 202 in milliseconds and parks jobs in the queue. Workers chew through the backlog steadily without crashing.'
-                        : 'Workers process incoming jobs immediately while keeping latency predictable.'}
+                      <CourseText
+                        text={
+                          trafficSpike
+                            ? 'The API replies 202 in milliseconds and parks jobs in the queue. Workers chew through the backlog steadily without crashing.'
+                            : 'Workers process incoming jobs immediately while keeping latency predictable.'
+                        }
+                      />
                     </p>
                   </div>
                 </div>

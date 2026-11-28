@@ -2,6 +2,7 @@ import { Activity, AlertOctagon } from 'lucide-react';
 import type { ArchitectureDiagramData, ArchitectureId, DiagramNode } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureIconBadge } from './ArchitectureIcon';
+import { CourseText } from './CourseText';
 
 interface ArchitectureDiagramProps {
   data: ArchitectureDiagramData;
@@ -94,11 +95,17 @@ export function ArchitectureDiagram({
       >
         {failureMode ? (
           <>
-            <p className="font-bold text-rose-700 dark:text-rose-300">{data.failureTitle}</p>
-            <p className="prose-measure mt-0.5 text-sm">{data.failureSummary}</p>
+            <p className="font-bold text-rose-700 dark:text-rose-300">
+              <CourseText text={data.failureTitle} />
+            </p>
+            <p className="prose-measure mt-0.5 text-sm">
+              <CourseText text={data.failureSummary} />
+            </p>
           </>
         ) : (
-          <p className="prose-measure">{data.normalSummary}</p>
+          <p className="prose-measure">
+            <CourseText text={data.normalSummary} />
+          </p>
         )}
       </div>
 
@@ -348,7 +355,7 @@ export function ArchitectureDiagram({
                     Normal Operation
                   </p>
                   <p className="mt-1 leading-6 text-slate-700 dark:text-slate-200">
-                    {selectedNode.beginnerSummary}
+                    <CourseText text={selectedNode.beginnerSummary} />
                   </p>
                 </div>
 
@@ -363,7 +370,7 @@ export function ArchitectureDiagram({
                     Under Failure / Spike
                   </p>
                   <p className="mt-1 leading-6 text-slate-700 dark:text-slate-200">
-                    {selectedNode.failureNote}
+                    <CourseText text={selectedNode.failureNote} />
                   </p>
                 </div>
               </div>

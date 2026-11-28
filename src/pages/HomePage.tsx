@@ -9,6 +9,7 @@ import {
   ArchitectureIconBadge,
   ARCHITECTURE_VISUALS,
 } from '../components/ArchitectureIcon';
+import { CourseText } from '../components/CourseText';
 
 interface HomePageProps {
   progress: CourseProgressState;
@@ -180,10 +181,10 @@ export function HomePage({ progress, overallPercent }: HomePageProps) {
                       )}
                     </div>
                     <h3 className="mt-1.5 text-lg font-extrabold text-slate-900 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
-                      {mod.name}
+                      <CourseText text={mod.name} interactive={false} />
                     </h3>
                     <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-400">
-                      {mod.tagline}
+                      <CourseText text={mod.tagline} interactive={false} />
                     </p>
                   </div>
                 </div>

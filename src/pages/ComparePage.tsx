@@ -7,6 +7,7 @@ import type { ArchitectureId } from '../types/course';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureDecisionFlowchart, StranglerFigDiagram } from '../components/CompareVisuals';
 import { ArchitectureIconBadge } from '../components/ArchitectureIcon';
+import { CourseText } from '../components/CourseText';
 
 interface PriorityFilter {
   id: string;
@@ -59,21 +60,21 @@ const COMPARISON_ROWS: {
   label: string;
   render: (mod: (typeof ARCHITECTURE_MODULES)[number]) => string;
 }[] = [
-  {
-    label: 'Real-World Example',
-    render: (m) => `${m.scenario.company} (${m.scenario.domain})`,
-  },
-  { label: 'Ideal Team Size', render: (m) => m.comparisonProfile.idealTeamSize },
-  { label: 'Deployment Unit', render: (m) => m.comparisonProfile.deploymentUnit },
-  { label: 'Scaling Style', render: (m) => m.comparisonProfile.scalingStyle },
-  { label: 'Ops Complexity', render: (m) => m.comparisonProfile.opsComplexity },
-  { label: 'Early Dev Velocity', render: (m) => m.comparisonProfile.devVelocityEarly },
-  { label: 'Fault Isolation', render: (m) => m.comparisonProfile.faultIsolation },
-  { label: 'Cost While Idle', render: (m) => m.comparisonProfile.costAtIdle },
-  { label: 'Data Consistency', render: (m) => m.comparisonProfile.dataConsistency },
-  { label: 'Typical Datastore', render: (m) => m.comparisonProfile.typicalDatastore },
-  { label: 'Best Used For', render: (m) => m.comparisonProfile.bestFor },
-];
+    {
+      label: 'Real-World Example',
+      render: (m) => `${m.scenario.company} (${m.scenario.domain})`,
+    },
+    { label: 'Ideal Team Size', render: (m) => m.comparisonProfile.idealTeamSize },
+    { label: 'Deployment Unit', render: (m) => m.comparisonProfile.deploymentUnit },
+    { label: 'Scaling Style', render: (m) => m.comparisonProfile.scalingStyle },
+    { label: 'Ops Complexity', render: (m) => m.comparisonProfile.opsComplexity },
+    { label: 'Early Dev Velocity', render: (m) => m.comparisonProfile.devVelocityEarly },
+    { label: 'Fault Isolation', render: (m) => m.comparisonProfile.faultIsolation },
+    { label: 'Cost While Idle', render: (m) => m.comparisonProfile.costAtIdle },
+    { label: 'Data Consistency', render: (m) => m.comparisonProfile.dataConsistency },
+    { label: 'Typical Datastore', render: (m) => m.comparisonProfile.typicalDatastore },
+    { label: 'Best Used For', render: (m) => m.comparisonProfile.bestFor },
+  ];
 
 const HYBRID_COMBOS = [
   {
@@ -289,8 +290,8 @@ const SizingEstimator = memo(function SizingEstimator() {
     peakQps < 200
       ? 'A single well-indexed Modular Monolith (1–2 replicas + Postgres) or Serverless handles this workload easily — prioritize team velocity over distributed complexity.'
       : peakQps < 2000
-      ? 'A horizontally scaled Modular Monolith with Redis caching, read replicas, and async queues handles this comfortably; extract only genuinely hot or spiky slices.'
-      : 'High sustained throughput! Plan for caching/CDN layers, read replicas or specialized stores, event-driven buffering for bursts, and independent scaling of hot services.';
+        ? 'A horizontally scaled Modular Monolith with Redis caching, read replicas, and async queues handles this comfortably; extract only genuinely hot or spiky slices.'
+        : 'High sustained throughput! Plan for caching/CDN layers, read replicas or specialized stores, event-driven buffering for bursts, and independent scaling of hot services.';
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-xs sm:p-8 dark:border-slate-700/80 dark:bg-[#162033]">
@@ -301,8 +302,7 @@ const SizingEstimator = memo(function SizingEstimator() {
         5-Minute Back-of-the-Envelope Sizing Estimator
       </h2>
       <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        Before choosing distributed infrastructure, estimate your actual QPS, burstiness, and
-        daily egress — most teams overestimate traffic by 10x.
+        <CourseText text="Before choosing distributed infrastructure, estimate your actual QPS, burstiness, and daily egress — most teams overestimate traffic by 10x." />
       </p>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -310,7 +310,7 @@ const SizingEstimator = memo(function SizingEstimator() {
           <div>
             <div className="flex justify-between text-xs font-semibold">
               <label htmlFor="dau-slider" className="text-slate-700 dark:text-slate-200">
-                Daily Active Users (DAU)
+                <CourseText text="Daily Active Users (DAU)" />
               </label>
               <span className="font-mono font-bold text-indigo-600 dark:text-indigo-300">
                 {dau.toLocaleString()}
@@ -432,7 +432,7 @@ const SizingEstimator = memo(function SizingEstimator() {
 
           <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-3.5 text-xs leading-6 text-slate-800 dark:text-slate-100">
             <strong>Architecture Intuition: </strong>
-            {sizingVerdict}
+            <CourseText text={sizingVerdict} />
           </div>
         </div>
       </div>
@@ -476,7 +476,7 @@ const AdrTemplateCard = memo(function AdrTemplateCard() {
             Communicating Trade-Offs
           </p>
           <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
-            Lightweight Architecture Decision Record (ADR) Template
+            <CourseText text="Lightweight Architecture Decision Record (ADR) Template" interactive={false} />
           </h2>
           <p className="prose-measure mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Document <strong>why</strong> you chose an architecture — and define explicit revisit triggers so
@@ -572,11 +572,10 @@ export function ComparePage() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setStepIdx(i)}
-                    className={`border-b-2 pb-3 text-sm font-semibold transition ${
-                      isActive
-                        ? 'border-indigo-500 text-slate-900 dark:text-white'
-                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                    }`}
+                    className={`border-b-2 pb-3 text-sm font-semibold transition ${isActive
+                      ? 'border-indigo-500 text-slate-900 dark:text-white'
+                      : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                      }`}
                   >
                     {step.label}
                   </button>
@@ -615,18 +614,17 @@ export function ComparePage() {
                   key={filter.id}
                   type="button"
                   onClick={() => setActivePriority(filter.id)}
-                  className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition ${
-                    activePriority === filter.id
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-stone-100 text-slate-700 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
+                  className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition ${activePriority === filter.id
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-stone-100 text-slate-700 hover:bg-stone-200 dark:bg-[#0f172a] dark:text-slate-300 dark:hover:bg-slate-800'
+                    }`}
                 >
                   {filter.label}
                 </button>
               ))}
             </div>
             <p className="prose-measure mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              {currentFilter.tip}
+              <CourseText text={currentFilter.tip} />
             </p>
           </div>
 
@@ -645,13 +643,12 @@ export function ComparePage() {
                     return (
                       <th
                         key={mod.id}
-                        className={`p-4 transition ${
-                          isHighlighted
-                            ? 'bg-indigo-500/10'
-                            : isDimmed
+                        className={`p-4 transition ${isHighlighted
+                          ? 'bg-indigo-500/10'
+                          : isDimmed
                             ? 'opacity-40'
                             : ''
-                        }`}
+                          }`}
                       >
                         <Link
                           to={`/modules/${mod.id}`}
@@ -683,15 +680,14 @@ export function ComparePage() {
                       return (
                         <td
                           key={mod.id}
-                          className={`p-4 align-top text-[13px] leading-6 text-slate-700 transition dark:text-slate-200 ${
-                            isHighlighted
-                              ? 'bg-indigo-500/[0.06] font-medium'
-                              : isDimmed
+                          className={`p-4 align-top text-[13px] leading-6 text-slate-700 transition dark:text-slate-200 ${isHighlighted
+                            ? 'bg-indigo-500/[0.06] font-medium'
+                            : isDimmed
                               ? 'opacity-40'
                               : ''
-                          }`}
+                            }`}
                         >
-                          {row.render(mod)}
+                          <CourseText text={row.render(mod)} />
                         </td>
                       );
                     })}
@@ -740,7 +736,7 @@ export function ComparePage() {
                   {combo.title}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {combo.detail}
+                  <CourseText text={combo.detail} />
                 </p>
               </div>
             ))}
@@ -770,7 +766,7 @@ export function ComparePage() {
                 >
                   <p className="text-xs font-bold text-indigo-600 dark:text-indigo-300">{s.step}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                    {s.desc}
+                    <CourseText text={s.desc} />
                   </p>
                 </div>
               ))}
@@ -791,9 +787,11 @@ export function ComparePage() {
                     key={item.step}
                     className="rounded-xl border border-stone-200 bg-stone-50 p-3.5 dark:border-slate-700/80 dark:bg-[#0f172a]/70"
                   >
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{item.step}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      <CourseText text={item.step} />
+                    </p>
                     <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                      {item.detail}
+                      <CourseText text={item.detail} />
                     </p>
                   </div>
                 ))}
@@ -821,22 +819,20 @@ export function ComparePage() {
                 <button
                   type="button"
                   onClick={() => setTrafficTier('10k')}
-                  className={`rounded-lg px-3.5 py-1.5 transition ${
-                    trafficTier === '10k'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                  }`}
+                  className={`rounded-lg px-3.5 py-1.5 transition ${trafficTier === '10k'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
                 >
                   10k req / mo
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrafficTier('10m')}
-                  className={`rounded-lg px-3.5 py-1.5 transition ${
-                    trafficTier === '10m'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                  }`}
+                  className={`rounded-lg px-3.5 py-1.5 transition ${trafficTier === '10m'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
                 >
                   10M req / mo
                 </button>
@@ -862,22 +858,21 @@ export function ComparePage() {
                       <span>{item.name}</span>
                     </Link>
                     <span
-                      className={`font-mono text-sm font-extrabold ${
-                        item.verdict === 'cheapest'
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : item.verdict === 'balanced'
+                      className={`font-mono text-sm font-extrabold ${item.verdict === 'cheapest'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : item.verdict === 'balanced'
                           ? 'text-sky-600 dark:text-sky-400'
                           : 'text-amber-600 dark:text-amber-400'
-                      }`}
+                        }`}
                     >
                       {item.monthlyRange}
                     </span>
                   </div>
                   <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    <strong>Main driver:</strong> {item.opsDriver}
+                    <strong>Main driver:</strong> <CourseText text={item.opsDriver} />
                   </p>
                   <p className="mt-2.5 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    {item.note}
+                    <CourseText text={item.note} />
                   </p>
                 </div>
               ))}
@@ -885,7 +880,7 @@ export function ComparePage() {
 
             <div className="mt-6 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.08] p-4 text-sm leading-7 text-slate-800 dark:text-slate-100">
               <strong>Key Takeaway: </strong>
-              {activeCostTier.takeaway}
+              <CourseText text={activeCostTier.takeaway} />
             </div>
           </div>
         </section>

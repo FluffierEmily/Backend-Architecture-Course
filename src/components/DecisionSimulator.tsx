@@ -24,6 +24,7 @@ import {
   ArchitectureIconBadge,
   ARCHITECTURE_VISUALS,
 } from './ArchitectureIcon';
+import { CourseText } from './CourseText';
 
 interface DecisionSimulatorProps {
   completedChoices: Record<string, ArchitectureId>;
@@ -241,10 +242,10 @@ export function DecisionSimulator({
 
         {/* Brief Heading & Story */}
         <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-          {scenario.title}
+          <CourseText text={scenario.title} />
         </h2>
         <p className="prose-measure mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
-          {scenario.brief}
+          <CourseText text={scenario.brief} />
         </p>
 
         {/* Constraints Grid */}
@@ -266,10 +267,10 @@ export function DecisionSimulator({
             >
               <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <Icon className="h-3.5 w-3.5 text-indigo-500" />
-                {label}
+                <CourseText text={label} />
               </div>
               <p className="mt-1 text-sm font-medium leading-snug text-slate-800 dark:text-slate-200">
-                {value}
+                <CourseText text={value} />
               </p>
             </div>
           ))}
@@ -352,11 +353,11 @@ export function DecisionSimulator({
           </div>
 
           <h3 className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">
-            {outcome.headline}
+            <CourseText text={outcome.headline} />
           </h3>
 
           <p className="prose-measure mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
-            {outcome.sixMonthsLater}
+            <CourseText text={outcome.sixMonthsLater} />
           </p>
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -370,7 +371,9 @@ export function DecisionSimulator({
                   {outcome.whatWorked.map((item) => (
                     <li key={item} className="flex gap-2">
                       <span className="text-emerald-500">•</span>
-                      <span>{item}</span>
+                      <span>
+                        <CourseText text={item} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -383,7 +386,9 @@ export function DecisionSimulator({
                   {outcome.whatHurt.map((item) => (
                     <li key={item} className="flex gap-2">
                       <span className="text-amber-500">•</span>
-                      <span>{item}</span>
+                      <span>
+                        <CourseText text={item} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -412,7 +417,9 @@ export function DecisionSimulator({
                         {outcome.howToMitigate.map((fix) => (
                           <li key={fix} className="flex gap-2">
                             <span className="font-bold text-indigo-500">→</span>
-                            <span>{fix}</span>
+                            <span>
+                              <CourseText text={fix} />
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -484,7 +491,7 @@ export function DecisionSimulator({
               {scenario.hybridNote && (
                 <p className="mt-3 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.08] p-3.5 text-xs leading-5 text-slate-800 dark:text-slate-100">
                   <strong>Pragmatic Hybrid Pairing: </strong>
-                  {scenario.hybridNote}
+                  <CourseText text={scenario.hybridNote} />
                 </p>
               )}
             </div>
@@ -529,7 +536,7 @@ export function DecisionSimulator({
                         </span>
                       </div>
                       <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                        {o.headline}
+                        <CourseText text={o.headline} />
                       </p>
                     </div>
                   );

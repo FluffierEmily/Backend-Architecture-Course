@@ -13,6 +13,7 @@ import { ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureIcon, ARCHITECTURE_VISUALS } from './ArchitectureIcon';
 import { ImplementationDrawer } from './ImplementationDrawer';
+import { CourseText } from './CourseText';
 
 interface PracticeProjectCardProps {
   project: PracticeProject;
@@ -195,10 +196,10 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
 
       {/* Title & Summary */}
       <h3 className="mt-2 text-lg font-extrabold text-slate-900 dark:text-white">
-        {project.title}
+        <CourseText text={project.title} />
       </h3>
       <p className="prose-measure mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        {project.summary}
+        <CourseText text={project.summary} />
       </p>
 
       {/* Quiet Stack Line (No pill-tag clutter) */}
@@ -247,9 +248,11 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
                         : 'text-slate-800 dark:text-slate-100'
                     }`}
                   >
-                    {m.title}
+                    <CourseText text={m.title} interactive={false} />
                   </p>
-                  <p className="mt-0.5 text-slate-500 dark:text-slate-400">{m.detail}</p>
+                  <p className="mt-0.5 text-slate-500 dark:text-slate-400">
+                    <CourseText text={m.detail} interactive={false} />
+                  </p>
                 </div>
               </button>
             );
@@ -318,7 +321,9 @@ export const PracticeProjectCard = memo(function PracticeProjectCard({
               {project.architectureRules.map((rule) => (
                 <li key={rule} className="flex gap-2">
                   <span className="text-amber-500">•</span>
-                  <span>{rule}</span>
+                  <span>
+                    <CourseText text={rule} />
+                  </span>
                 </li>
               ))}
             </ul>

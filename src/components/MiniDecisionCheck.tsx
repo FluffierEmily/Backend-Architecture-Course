@@ -4,6 +4,7 @@ import type { ArchitectureId, MiniDecisionCheckItem } from '../types/course';
 import { ARCHITECTURE_META_BY_ID } from '../data/courseMeta';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { ArchitectureIcon } from './ArchitectureIcon';
+import { CourseText } from './CourseText';
 
 interface MiniDecisionCheckProps {
   storageKey?: string;
@@ -72,7 +73,7 @@ export function MiniDecisionCheck({
         )}
 
         <p className="prose-measure text-base font-semibold leading-7 text-slate-900 dark:text-white">
-          {check.prompt}
+          <CourseText text={check.prompt} />
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">
@@ -129,7 +130,7 @@ export function MiniDecisionCheck({
               )}
             </div>
             <p className="prose-measure leading-7 text-slate-700 dark:text-slate-200">
-              {check.explanation}
+              <CourseText text={check.explanation} />
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               {betterArch ? (

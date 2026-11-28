@@ -3,19 +3,29 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { CodeComparison } from '../components/CodeComparison';
 import { ARCHITECTURE_BY_ID } from '../data';
 
+function byRenderedText(rawText: string) {
+  const expected = rawText.replace(/`/g, '');
+  return (_content: string, element: Element | null) => {
+    if (!element || element.textContent !== expected) return false;
+    return Array.from(element.children).every((child) => child.textContent !== expected);
+  };
+}
+
 describe('CodeComparison', () => {
   const sampleItem = ARCHITECTURE_BY_ID['modular-monolith'].codeComparisons[0];
 
   it('renders both Problematic and Refactored code panels with the first annotation active', () => {
     render(<CodeComparison item={sampleItem} />);
 
-    expect(screen.getByText(sampleItem.title)).toBeInTheDocument();
+    expect(screen.getByText(byRenderedText(sampleItem.title))).toBeInTheDocument();
     expect(screen.getByText(sampleItem.problemTitle)).toBeInTheDocument();
     expect(screen.getByText(sampleItem.refactoredTitle)).toBeInTheDocument();
 
-    expect(screen.getByText(sampleItem.annotations[0].problemExplanation)).toBeInTheDocument();
     expect(
-      screen.getByText(sampleItem.annotations[0].refactoredExplanation)
+      screen.getByText(byRenderedText(sampleItem.annotations[0].problemExplanation))
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byRenderedText(sampleItem.annotations[0].refactoredExplanation))
     ).toBeInTheDocument();
   });
 
@@ -27,9 +37,11 @@ describe('CodeComparison', () => {
     fireEvent.click(secondTab);
 
     expect(onInspect).toHaveBeenCalledWith(sampleItem.id);
-    expect(screen.getByText(sampleItem.annotations[1].problemExplanation)).toBeInTheDocument();
     expect(
-      screen.getByText(sampleItem.annotations[1].refactoredExplanation)
+      screen.getByText(byRenderedText(sampleItem.annotations[1].problemExplanation))
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byRenderedText(sampleItem.annotations[1].refactoredExplanation))
     ).toBeInTheDocument();
   });
 
@@ -39,8 +51,8 @@ describe('CodeComparison', () => {
     fireEvent.click(screen.getByRole('button', { name: /view all explainers/i }));
 
     for (const ann of sampleItem.annotations) {
-      expect(screen.getByText(ann.problemExplanation)).toBeInTheDocument();
-      expect(screen.getByText(ann.refactoredExplanation)).toBeInTheDocument();
+      expect(screen.getByText(byRenderedText(ann.problemExplanation))).toBeInTheDocument();
+      expect(screen.getByText(byRenderedText(ann.refactoredExplanation))).toBeInTheDocument();
     }
   });
 
@@ -55,7 +67,9 @@ describe('CodeComparison', () => {
     const riskyLineNum = sampleItem.annotations[0].problemLines[0];
     fireEvent.click(screen.getByTitle(`Check line ${riskyLineNum}`));
     expect(screen.getByText(/Spotted 1 of 2/i)).toBeInTheDocument();
-    expect(screen.getByText(sampleItem.annotations[0].problemExplanation)).toBeInTheDocument();
+    expect(
+      screen.getByText(byRenderedText(sampleItem.annotations[0].problemExplanation))
+    ).toBeInTheDocument();
 
     // Reveal refactored code
     fireEvent.click(screen.getByRole('button', { name: /reveal refactored code/i }));

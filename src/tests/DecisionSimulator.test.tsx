@@ -3,6 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { DecisionSimulator } from '../components/DecisionSimulator';
 import { SIMULATOR_SCENARIOS } from '../data';
 
+function byRenderedText(rawText: string) {
+  const expected = rawText.replace(/`/g, '');
+  return (_content: string, element: Element | null) => {
+    if (!element || element.textContent !== expected) return false;
+    return Array.from(element.children).every((child) => child.textContent !== expected);
+  };
+}
+
 describe('DecisionSimulator', () => {
   it('evaluates the selected architecture and shows the 6 Months Later outcome', () => {
     const onRecordChoice = vi.fn();
@@ -21,10 +29,10 @@ describe('DecisionSimulator', () => {
 
     expect(onRecordChoice).toHaveBeenCalledWith(firstScenario.id, 'modular-monolith');
     expect(
-      screen.getByText(firstScenario.outcomes['modular-monolith'].headline)
+      screen.getByText(byRenderedText(firstScenario.outcomes['modular-monolith'].headline))
     ).toBeInTheDocument();
     expect(
-      screen.getByText(firstScenario.outcomes['modular-monolith'].sixMonthsLater)
+      screen.getByText(byRenderedText(firstScenario.outcomes['modular-monolith'].sixMonthsLater))
     ).toBeInTheDocument();
   });
 

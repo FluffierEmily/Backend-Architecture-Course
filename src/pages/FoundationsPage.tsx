@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FoundationsPlayground } from '../components/FoundationsPlayground';
 import { ArchitectureIcon } from '../components/ArchitectureIcon';
+import { CourseText } from '../components/CourseText';
 import { BEGINNER_GLOSSARY } from '../data/foundations';
 import { usePersistedState } from '../hooks/usePersistedState';
 
@@ -136,10 +137,10 @@ export function FoundationsPage({ isCompleted, onMarkComplete }: FoundationsPage
                 className="rounded-2xl border border-stone-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#162033]"
               >
                 <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-300">
-                  {item.term}
+                  <CourseText text={item.term} />
                 </h3>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {item.meaning}
+                  <CourseText text={item.meaning} />
                 </p>
               </div>
             ))}
